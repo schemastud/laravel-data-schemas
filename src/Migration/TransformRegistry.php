@@ -16,7 +16,7 @@ use Rushing\Popcorn\Contracts\Invocable;
  * data-schemas only knows the popcorn contract; it never knows what the transform
  * actually does or where it runs.
  */
-final class TransformRegistry
+class TransformRegistry
 {
     /** @var array<string, Invocable> */
     private array $byPair = [];

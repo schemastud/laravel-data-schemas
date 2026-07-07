@@ -11,18 +11,18 @@ namespace Rushing\LaravelDataSchemas\Migration;
  * preserved immutably (never mutated, never destroyed). The source record is
  * always recoverable from {@see $original}.
  */
-final class MigrationResult
+class MigrationResult
 {
     /**
      * @param  array<string, mixed>  $original  the source payload, preserved verbatim
      * @param  array<string, mixed>|null  $migrated  the conforming candidate, or null if quarantined
      */
     private function __construct(
-        public readonly array $original,
-        public readonly ?array $migrated,
-        public readonly bool $quarantined,
-        public readonly ?string $rung,
-        public readonly float $confidence,
+        public array $original,
+        public ?array $migrated,
+        public bool $quarantined,
+        public ?string $rung,
+        public float $confidence,
     ) {}
 
     /**

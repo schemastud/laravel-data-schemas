@@ -12,7 +12,7 @@ namespace Rushing\LaravelDataSchemas\Migration;
  * the data passed through the popcorn ladder as its `array $input` (carried under
  * a single key so the typed object survives the array contract).
  */
-final class MigrationRequest
+class MigrationRequest
 {
     /**
      * @param  array<string, mixed>  $payload  the source record, shaped to $from
@@ -21,10 +21,10 @@ final class MigrationRequest
      * @param  array{added: array<int, string>, dropped: array<int, string>, widened: array<int, array<string, mixed>>, changed: array<int, array<string, mixed>>, breaking: bool}  $diff
      */
     public function __construct(
-        public readonly array $payload,
-        public readonly array $from,
-        public readonly array $to,
-        public readonly array $diff,
+        public array $payload,
+        public array $from,
+        public array $to,
+        public array $diff,
     ) {}
 
     /**

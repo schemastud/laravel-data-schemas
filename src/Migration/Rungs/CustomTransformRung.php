@@ -20,7 +20,7 @@ use Rushing\Popcorn\Contracts\Invocable;
  * through the same acceptance gate as every other rung — a transform that emits a
  * non-conforming shape makes the rung abstain and the ladder demotes.
  */
-final class CustomTransformRung extends MigrationRung
+class CustomTransformRung extends MigrationRung
 {
     public function name(): string
     {

@@ -13,9 +13,9 @@ use RuntimeException;
 class SchemaRegistryConflict extends RuntimeException
 {
     public function __construct(
-        public readonly string $id,
-        public readonly string $existingFingerprint,
-        public readonly string $incomingFingerprint,
+        public string $id,
+        public string $existingFingerprint,
+        public string $incomingFingerprint,
     ) {
         parent::__construct(sprintf(
             'Refusing to overwrite frozen schema "%s": stored fingerprint %s differs from incoming %s. '

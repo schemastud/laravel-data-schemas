@@ -8,10 +8,10 @@ namespace Rushing\LaravelDataSchemas\Strategies;
  * its own config slot, e.g. `validation_mapping`) and the current schema mode
  * (collapsed|request|response|llm_strict).
  */
-final class SchemaStrategyContext
+class SchemaStrategyContext
 {
     public function __construct(
-        public readonly array $config,
-        public readonly string $mode,
+        public array $config,
+        public string $mode,
     ) {}
 }

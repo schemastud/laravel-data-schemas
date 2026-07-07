@@ -15,7 +15,7 @@ use Rushing\LaravelDataSchemas\Migration\MigrationRung;
  * so a schema version that BOTH renames a field AND adds/drops others migrates in
  * one pass — the rename is the increment this rung adds over pure structure.
  */
-final class DeclaredMappingRung extends MigrationRung
+class DeclaredMappingRung extends MigrationRung
 {
     public function name(): string
     {

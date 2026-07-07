@@ -23,8 +23,8 @@ use Rushing\Popcorn\Strategy\StrategyResult;
 abstract class MigrationRung implements Strategy
 {
     public function __construct(
-        protected readonly AcceptanceGate $gate = new AcceptanceGate,
-        protected readonly float $confidence = 1.0,
+        protected AcceptanceGate $gate = new AcceptanceGate,
+        protected float $confidence = 1.0,
     ) {}
 
     /**

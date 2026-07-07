@@ -23,7 +23,7 @@ use Rushing\Popcorn\Contracts\Invocable;
  * migration (`x-migrate: llm`), keeping the model out of migrations it was never
  * asked to attempt.
  */
-final class LlmTryRung extends MigrationRung
+class LlmTryRung extends MigrationRung
 {
     protected ?LlmMigrator $migrator = null;
 

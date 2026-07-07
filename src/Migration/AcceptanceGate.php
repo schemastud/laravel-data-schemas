@@ -14,10 +14,10 @@ use Opis\JsonSchema\Validator;
  * This is what makes the ladder self-validating: a strong rung that produces a
  * non-conforming shape steps aside rather than emitting a bad migration.
  */
-final class AcceptanceGate
+class AcceptanceGate
 {
     public function __construct(
-        private readonly Validator $validator = new Validator,
+        private Validator $validator = new Validator,
     ) {}
 
     /**

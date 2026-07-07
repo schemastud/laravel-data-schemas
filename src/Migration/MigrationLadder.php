@@ -25,12 +25,12 @@ use Rushing\Popcorn\Strategy\StrategyLadder;
  * that preserves the ORIGINAL payload immutably — the source is never mutated or
  * destroyed.
  */
-final class MigrationLadder
+class MigrationLadder
 {
-    private readonly StrategyLadder $ladder;
+    private StrategyLadder $ladder;
 
     /** @var array<int, MigrationRung> */
-    private readonly array $rungInstances;
+    private array $rungInstances;
 
     public function __construct(MigrationRung ...$rungs)
     {

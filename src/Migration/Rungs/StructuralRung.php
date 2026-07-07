@@ -20,7 +20,7 @@ use Rushing\LaravelDataSchemas\Migration\MigrationRung;
  * does not validate (e.g. an added required field with no default cannot be filled
  * sensibly), the acceptance gate makes the rung abstain.
  */
-final class StructuralRung extends MigrationRung
+class StructuralRung extends MigrationRung
 {
     public function name(): string
     {

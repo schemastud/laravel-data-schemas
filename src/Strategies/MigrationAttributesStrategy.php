@@ -6,6 +6,7 @@ use ReflectionProperty;
 use Rushing\LaravelDataSchemas\Attributes\MigrateWith;
 use Rushing\LaravelDataSchemas\Attributes\WasNamed;
 use Rushing\LaravelDataSchemas\Contracts\SchemaIdentity;
+use Rushing\LaravelDataSchemas\Keywords;
 use Rushing\LaravelDataSchemas\Migration\MigrationLadder;
 
 /**
@@ -36,12 +37,12 @@ class MigrationAttributesStrategy implements SchemaStrategy
 
         $wasNamed = $property->getAttributes(WasNamed::class);
         if (! empty($wasNamed)) {
-            $schema['x-migrate-from'] = $wasNamed[0]->newInstance()->from;
+            $schema[Keywords::MigrateFrom] = $wasNamed[0]->newInstance()->from;
         }
 
         $migrateWith = $property->getAttributes(MigrateWith::class);
         if (! empty($migrateWith)) {
-            $schema['x-migrate'] = $migrateWith[0]->newInstance()->with;
+            $schema[Keywords::Migrate] = $migrateWith[0]->newInstance()->with;
         }
 
         return $schema;

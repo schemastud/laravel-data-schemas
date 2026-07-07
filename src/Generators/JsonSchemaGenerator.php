@@ -14,6 +14,7 @@ use Rushing\LaravelDataSchemas\Attributes\ArrayItems;
 use Rushing\LaravelDataSchemas\Attributes\Description;
 use Rushing\LaravelDataSchemas\Attributes\Example;
 use Rushing\LaravelDataSchemas\Contracts\SchemaIdentity;
+use Rushing\LaravelDataSchemas\Keywords;
 use Rushing\LaravelDataSchemas\Strategies\MigrationAttributesStrategy;
 use Rushing\LaravelDataSchemas\Strategies\SchemaStrategy;
 use Rushing\LaravelDataSchemas\Strategies\SchemaStrategyContext;
@@ -250,12 +251,12 @@ class JsonSchemaGenerator implements Generator
         // Lazy => present in responses only when included.
         if ($info['lazy']) {
             $schema['readOnly'] = true;
-            $schema['x-lazy'] = true;
+            $schema[Keywords::Lazy] = true;
         }
 
         // Optional => key may be absent from input.
         if ($info['optional']) {
-            $schema['x-optional'] = true;
+            $schema[Keywords::Optional] = true;
         }
 
         if (! empty($descAttrs = $property->getAttributes(Description::class))) {

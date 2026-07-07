@@ -3,6 +3,7 @@
 namespace Rushing\LaravelDataSchemas\Migration\Rungs;
 
 use Rushing\LaravelDataSchemas\Attributes\MigrateWith;
+use Rushing\LaravelDataSchemas\Keywords;
 use Rushing\LaravelDataSchemas\Migration\Contracts\LlmMigrator;
 use Rushing\LaravelDataSchemas\Migration\MigrationRequest;
 use Rushing\LaravelDataSchemas\Migration\MigrationRung;
@@ -62,7 +63,7 @@ class LlmTryRung extends MigrationRung
     protected function hasLlmOptIn(MigrationRequest $request): bool
     {
         foreach ($request->to['properties'] ?? [] as $prop) {
-            if (($prop['x-migrate'] ?? null) === MigrateWith::LLM) {
+            if (($prop[Keywords::Migrate] ?? null) === MigrateWith::LLM) {
                 return true;
             }
         }

@@ -3,6 +3,7 @@
 namespace Rushing\LaravelDataSchemas\Migration\Rungs;
 
 use Rushing\LaravelDataSchemas\Attributes\MigrateWith;
+use Rushing\LaravelDataSchemas\Keywords;
 use Rushing\LaravelDataSchemas\Migration\MigrationRequest;
 use Rushing\LaravelDataSchemas\Migration\MigrationRung;
 use Rushing\LaravelDataSchemas\Migration\TransformRegistry;
@@ -96,7 +97,7 @@ class CustomTransformRung extends MigrationRung
     {
         $pins = [];
         foreach ($request->to['properties'] ?? [] as $prop) {
-            $pin = $prop['x-migrate'] ?? null;
+            $pin = $prop[Keywords::Migrate] ?? null;
             if (is_string($pin) && $pin !== '') {
                 $pins[$pin] = true;
             }

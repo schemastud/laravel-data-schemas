@@ -2,6 +2,7 @@
 
 namespace Rushing\LaravelDataSchemas\Migration\Rungs;
 
+use Rushing\LaravelDataSchemas\Keywords;
 use Rushing\LaravelDataSchemas\Migration\MigrationRequest;
 use Rushing\LaravelDataSchemas\Migration\MigrationRung;
 
@@ -81,7 +82,7 @@ class DeclaredMappingRung extends MigrationRung
     {
         $renames = [];
         foreach ($request->to['properties'] ?? [] as $field => $prop) {
-            $from = $prop['x-migrate-from'] ?? null;
+            $from = $prop[Keywords::MigrateFrom] ?? null;
             if (is_string($from) && $from !== '') {
                 $renames[$field] = $from;
             }

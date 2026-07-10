@@ -3,6 +3,7 @@
 use Rushing\LaravelDataSchemas\Collectors\DataObjectCollector;
 use Rushing\LaravelDataSchemas\Generators\JsonSchemaGenerator;
 use Rushing\LaravelDataSchemas\PathGenerators\DefaultPathGenerator;
+use Rushing\LaravelDataSchemas\Strategies\KeywordAttributesStrategy;
 use Rushing\LaravelDataSchemas\Strategies\MigrationAttributesStrategy;
 use Rushing\LaravelDataSchemas\Strategies\ValidationAttributeStrategy;
 use Rushing\LaravelDataSchemas\Writers\JsonSchemaWriter;
@@ -210,5 +211,9 @@ return [
         // that do not implement SchemaIdentity, so non-migration output is
         // unchanged. Stripped by forLlmStrict like every other x-* keyword.
         MigrationAttributesStrategy::class,
+        // Projects repeatable #[Keyword('x-…', value)] annotations — the
+        // generic channel for host-owned extension keywords (x-widget,
+        // x-widget-options, …). No-op without the attribute.
+        KeywordAttributesStrategy::class,
     ],
 ];

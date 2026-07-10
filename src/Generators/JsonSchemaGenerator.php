@@ -15,6 +15,7 @@ use Rushing\LaravelDataSchemas\Attributes\Description;
 use Rushing\LaravelDataSchemas\Attributes\Example;
 use Rushing\LaravelDataSchemas\Contracts\SchemaIdentity;
 use Rushing\LaravelDataSchemas\Keywords;
+use Rushing\LaravelDataSchemas\Strategies\KeywordAttributesStrategy;
 use Rushing\LaravelDataSchemas\Strategies\MigrationAttributesStrategy;
 use Rushing\LaravelDataSchemas\Strategies\SchemaStrategy;
 use Rushing\LaravelDataSchemas\Strategies\SchemaStrategyContext;
@@ -643,6 +644,9 @@ class JsonSchemaGenerator implements Generator
             // class that does not opt into SchemaIdentity, so the default set
             // never changes non-migration schema output.
             MigrationAttributesStrategy::class,
+            // Generic #[Keyword('x-…', value)] projection; a no-op for
+            // properties without the attribute.
+            KeywordAttributesStrategy::class,
         ];
     }
 

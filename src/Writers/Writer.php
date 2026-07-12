@@ -1,8 +1,8 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Writers;
+namespace Schemastud\DataSchemas\Writers;
 
-use Rushing\LaravelDataSchemas\Support\SchemaCollection;
+use Schemastud\DataSchemas\Support\SchemaCollection;
 
 interface Writer
 {

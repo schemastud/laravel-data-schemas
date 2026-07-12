@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\PathGenerators;
+namespace Schemastud\DataSchemas\PathGenerators;
 
 use ReflectionClass;
 

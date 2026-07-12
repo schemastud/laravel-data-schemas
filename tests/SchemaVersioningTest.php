@@ -1,13 +1,13 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use Rushing\LaravelDataSchemas\Generators\JsonSchemaGenerator;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\SampleData;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\VersionedArticleData;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\VersionedAuthorData;
+use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
+use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
+use Schemastud\DataSchemas\Tests\Fixtures\VersionedArticleData;
+use Schemastud\DataSchemas\Tests\Fixtures\VersionedAuthorData;
 
 class SchemaVersioningTest extends TestCase
 {

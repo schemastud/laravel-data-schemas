@@ -1,11 +1,11 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use Rushing\LaravelDataSchemas\Lifecycle\FilesystemSchemaRegistry;
-use Rushing\LaravelDataSchemas\Lifecycle\SchemaRegistryConflict;
+use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
+use Schemastud\DataSchemas\Lifecycle\SchemaRegistryConflict;
 
 class SchemaRegistryTest extends TestCase
 {

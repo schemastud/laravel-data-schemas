@@ -1,12 +1,12 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Actions;
+namespace Schemastud\DataSchemas\Actions;
 
 use ReflectionClass;
-use Rushing\LaravelDataSchemas\Generators\Generator;
-use Rushing\LaravelDataSchemas\PathGenerators\PathGenerator;
-use Rushing\LaravelDataSchemas\Support\GeneratedSchema;
-use Rushing\LaravelDataSchemas\Support\SchemaCollection;
+use Schemastud\DataSchemas\Generators\Generator;
+use Schemastud\DataSchemas\PathGenerators\PathGenerator;
+use Schemastud\DataSchemas\Support\GeneratedSchema;
+use Schemastud\DataSchemas\Support\SchemaCollection;
 
 class GenerateSchemasAction
 {

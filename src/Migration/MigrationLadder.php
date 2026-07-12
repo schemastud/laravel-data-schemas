@@ -1,11 +1,11 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration;
+namespace Schemastud\DataSchemas\Migration;
 
-use Rushing\LaravelDataSchemas\Lifecycle\SchemaDiff;
-use Rushing\LaravelDataSchemas\Migration\Rungs\CustomTransformRung;
-use Rushing\LaravelDataSchemas\Migration\Rungs\DeclaredMappingRung;
-use Rushing\LaravelDataSchemas\Migration\Rungs\StructuralRung;
+use Schemastud\DataSchemas\Lifecycle\SchemaDiff;
+use Schemastud\DataSchemas\Migration\Rungs\CustomTransformRung;
+use Schemastud\DataSchemas\Migration\Rungs\DeclaredMappingRung;
+use Schemastud\DataSchemas\Migration\Rungs\StructuralRung;
 use Rushing\Popcorn\Strategy\StrategyLadder;
 
 /**

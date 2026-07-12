@@ -1,14 +1,14 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use Rushing\LaravelDataSchemas\Generators\JsonSchemaGenerator;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\ContentOutlineItemData;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\EnumArrayData;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\SampleData;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\ScalarArrayData;
+use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
+use Schemastud\DataSchemas\Tests\Fixtures\ContentOutlineItemData;
+use Schemastud\DataSchemas\Tests\Fixtures\EnumArrayData;
+use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
+use Schemastud\DataSchemas\Tests\Fixtures\ScalarArrayData;
 
 class JsonSchemaGeneratorTest extends TestCase
 {

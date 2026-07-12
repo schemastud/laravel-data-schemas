@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Contracts;
+namespace Schemastud\DataSchemas\Contracts;
 
 /**
  * A registry capability: enumerate the known integer versions registered under a

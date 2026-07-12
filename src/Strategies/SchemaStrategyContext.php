@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Strategies;
+namespace Schemastud\DataSchemas\Strategies;
 
 /**
  * The ambient information a property strategy may consult while contributing

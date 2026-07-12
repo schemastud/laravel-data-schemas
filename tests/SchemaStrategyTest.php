@@ -1,14 +1,14 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use Rushing\LaravelDataSchemas\Generators\JsonSchemaGenerator;
-use Rushing\LaravelDataSchemas\Strategies\ValidationAttributeStrategy;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\SampleData;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\StubVendorKeywordStrategy;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\VendorKeywordData;
+use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
+use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
+use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
+use Schemastud\DataSchemas\Tests\Fixtures\StubVendorKeywordStrategy;
+use Schemastud\DataSchemas\Tests\Fixtures\VendorKeywordData;
 use Spatie\LaravelData\Attributes\Validation\Max;
 
 class SchemaStrategyTest extends TestCase

@@ -1,12 +1,12 @@
 <?php
 
-use Rushing\LaravelDataSchemas\Collectors\DataObjectCollector;
-use Rushing\LaravelDataSchemas\Generators\JsonSchemaGenerator;
-use Rushing\LaravelDataSchemas\PathGenerators\DefaultPathGenerator;
-use Rushing\LaravelDataSchemas\Strategies\KeywordAttributesStrategy;
-use Rushing\LaravelDataSchemas\Strategies\MigrationAttributesStrategy;
-use Rushing\LaravelDataSchemas\Strategies\ValidationAttributeStrategy;
-use Rushing\LaravelDataSchemas\Writers\JsonSchemaWriter;
+use Schemastud\DataSchemas\Collectors\DataObjectCollector;
+use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
+use Schemastud\DataSchemas\PathGenerators\DefaultPathGenerator;
+use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
+use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
+use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
+use Schemastud\DataSchemas\Writers\JsonSchemaWriter;
 
 return [
     /*
@@ -155,7 +155,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Base URI for absolute, versioned `$id`s. A Data class that implements
-    | Rushing\LaravelDataSchemas\Contracts\SchemaIdentity opts into versioning:
+    | Schemastud\DataSchemas\Contracts\SchemaIdentity opts into versioning:
     | its `$id` becomes `<base_uri>/<schemaName()>/<schemaVersion()>` and, when
     | nested, it is referenced by that absolute `$id` instead of `#/$defs/Short`.
     |

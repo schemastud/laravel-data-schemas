@@ -1,10 +1,10 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration\Rungs;
+namespace Schemastud\DataSchemas\Migration\Rungs;
 
-use Rushing\LaravelDataSchemas\Keywords;
-use Rushing\LaravelDataSchemas\Migration\MigrationRequest;
-use Rushing\LaravelDataSchemas\Migration\MigrationRung;
+use Schemastud\DataSchemas\Keywords;
+use Schemastud\DataSchemas\Migration\MigrationRequest;
+use Schemastud\DataSchemas\Migration\MigrationRung;
 
 /**
  * Rung 2 — applies the author-declared renames/moves a structural diff cannot

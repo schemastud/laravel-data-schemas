@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration;
+namespace Schemastud\DataSchemas\Migration;
 
 /**
  * The immutable input a migration ladder resolves: an original payload shaped to

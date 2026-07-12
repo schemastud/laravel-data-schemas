@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Collectors;
+namespace Schemastud\DataSchemas\Collectors;
 
 use ReflectionClass;
 use Spatie\LaravelData\Data;

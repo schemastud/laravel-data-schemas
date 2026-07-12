@@ -1,10 +1,10 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration\Rungs;
+namespace Schemastud\DataSchemas\Migration\Rungs;
 
-use Rushing\LaravelDataSchemas\Lifecycle\SchemaDiff;
-use Rushing\LaravelDataSchemas\Migration\MigrationRequest;
-use Rushing\LaravelDataSchemas\Migration\MigrationRung;
+use Schemastud\DataSchemas\Lifecycle\SchemaDiff;
+use Schemastud\DataSchemas\Migration\MigrationRequest;
+use Schemastud\DataSchemas\Migration\MigrationRung;
 
 /**
  * Rung 1 (strongest) — the purely structural migration a {@see SchemaDiff}

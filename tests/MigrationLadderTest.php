@@ -1,12 +1,12 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Rushing\LaravelDataSchemas\Migration\Contracts\LlmMigrator;
-use Rushing\LaravelDataSchemas\Migration\MigrationLadder;
-use Rushing\LaravelDataSchemas\Migration\Rungs\LlmTryRung;
-use Rushing\LaravelDataSchemas\Migration\TransformRegistry;
+use Schemastud\DataSchemas\Migration\Contracts\LlmMigrator;
+use Schemastud\DataSchemas\Migration\MigrationLadder;
+use Schemastud\DataSchemas\Migration\Rungs\LlmTryRung;
+use Schemastud\DataSchemas\Migration\TransformRegistry;
 use Rushing\Popcorn\Binding;
 use Rushing\Popcorn\Invocables\LocalInvocable;
 

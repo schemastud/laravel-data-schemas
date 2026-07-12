@@ -1,13 +1,13 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Strategies;
+namespace Schemastud\DataSchemas\Strategies;
 
 use ReflectionProperty;
-use Rushing\LaravelDataSchemas\Attributes\MigrateWith;
-use Rushing\LaravelDataSchemas\Attributes\WasNamed;
-use Rushing\LaravelDataSchemas\Contracts\SchemaIdentity;
-use Rushing\LaravelDataSchemas\Keywords;
-use Rushing\LaravelDataSchemas\Migration\MigrationLadder;
+use Schemastud\DataSchemas\Attributes\MigrateWith;
+use Schemastud\DataSchemas\Attributes\WasNamed;
+use Schemastud\DataSchemas\Contracts\SchemaIdentity;
+use Schemastud\DataSchemas\Keywords;
+use Schemastud\DataSchemas\Migration\MigrationLadder;
 
 /**
  * Projects the data-schemas migration vocabulary onto a property schema, mirroring

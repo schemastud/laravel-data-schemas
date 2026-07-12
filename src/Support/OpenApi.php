@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Support;
+namespace Schemastud\DataSchemas\Support;
 
 /**
  * Dependency-free reshaping of a self-contained JSON Schema document

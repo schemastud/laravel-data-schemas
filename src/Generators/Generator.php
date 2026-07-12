@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Generators;
+namespace Schemastud\DataSchemas\Generators;
 
 use ReflectionClass;
 

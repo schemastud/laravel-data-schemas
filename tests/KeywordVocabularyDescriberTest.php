@@ -1,13 +1,13 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionParameter;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\Vocabulary\SampleDescriber;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\Vocabulary\SamplePolicySource;
-use Rushing\LaravelDataSchemas\Vocabulary\KeywordDescriptor;
-use Rushing\LaravelDataSchemas\Vocabulary\ValueSource;
+use Schemastud\DataSchemas\Tests\Fixtures\Vocabulary\SampleDescriber;
+use Schemastud\DataSchemas\Tests\Fixtures\Vocabulary\SamplePolicySource;
+use Schemastud\DataSchemas\Vocabulary\KeywordDescriptor;
+use Schemastud\DataSchemas\Vocabulary\ValueSource;
 
 /**
  * The keyword-vocabulary describer MECHANISM: reflect each ValueSource into JSON Schema + TypeScript,

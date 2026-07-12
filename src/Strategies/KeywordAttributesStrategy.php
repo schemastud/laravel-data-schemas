@@ -1,10 +1,10 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Strategies;
+namespace Schemastud\DataSchemas\Strategies;
 
 use InvalidArgumentException;
 use ReflectionProperty;
-use Rushing\LaravelDataSchemas\Attributes\Keyword;
+use Schemastud\DataSchemas\Attributes\Keyword;
 
 /**
  * Projects repeatable #[Keyword('x-…', value)] annotations onto the property

@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Support;
+namespace Schemastud\DataSchemas\Support;
 
 class GeneratedSchema
 {

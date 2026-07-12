@@ -1,10 +1,10 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures;
+namespace Schemastud\DataSchemas\Tests\Fixtures;
 
 use ReflectionProperty;
-use Rushing\LaravelDataSchemas\Strategies\SchemaStrategy;
-use Rushing\LaravelDataSchemas\Strategies\SchemaStrategyContext;
+use Schemastud\DataSchemas\Strategies\SchemaStrategy;
+use Schemastud\DataSchemas\Strategies\SchemaStrategyContext;
 
 /**
  * A test strategy that tags every property with a vendor keyword, standing in

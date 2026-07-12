@@ -1,8 +1,8 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures;
+namespace Schemastud\DataSchemas\Tests\Fixtures;
 
-use Rushing\LaravelDataSchemas\Contracts\SchemaIdentity;
+use Schemastud\DataSchemas\Contracts\SchemaIdentity;
 use Spatie\LaravelData\Data;
 
 /**

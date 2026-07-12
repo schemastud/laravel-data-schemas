@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas;
+namespace Schemastud\DataSchemas;
 
 /**
  * The JSON-Schema extension keywords THIS package owns.

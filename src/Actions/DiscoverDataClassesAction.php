@@ -1,9 +1,9 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Actions;
+namespace Schemastud\DataSchemas\Actions;
 
 use ReflectionClass;
-use Rushing\LaravelDataSchemas\Collectors\Collector;
+use Schemastud\DataSchemas\Collectors\Collector;
 use Symfony\Component\Finder\Finder;
 
 class DiscoverDataClassesAction

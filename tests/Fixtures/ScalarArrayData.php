@@ -1,8 +1,8 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures;
+namespace Schemastud\DataSchemas\Tests\Fixtures;
 
-use Rushing\LaravelDataSchemas\Attributes\ArrayItems;
+use Schemastud\DataSchemas\Attributes\ArrayItems;
 use Spatie\LaravelData\Data;
 
 class ScalarArrayData extends Data

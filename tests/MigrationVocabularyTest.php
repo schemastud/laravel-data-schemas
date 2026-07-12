@@ -1,16 +1,16 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use Rushing\LaravelDataSchemas\Attributes\MigrateWith;
-use Rushing\LaravelDataSchemas\Generators\JsonSchemaGenerator;
-use Rushing\LaravelDataSchemas\Strategies\MigrationAttributesStrategy;
-use Rushing\LaravelDataSchemas\Strategies\ValidationAttributeStrategy;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\MigratableProfileData;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\StubAddressTransform;
-use Rushing\LaravelDataSchemas\Tests\Fixtures\VendorKeywordData;
+use Schemastud\DataSchemas\Attributes\MigrateWith;
+use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
+use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
+use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
+use Schemastud\DataSchemas\Tests\Fixtures\MigratableProfileData;
+use Schemastud\DataSchemas\Tests\Fixtures\StubAddressTransform;
+use Schemastud\DataSchemas\Tests\Fixtures\VendorKeywordData;
 
 class MigrationVocabularyTest extends TestCase
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Generators;
+namespace Schemastud\DataSchemas\Generators;
 
 use BackedEnum;
 use DateTimeInterface;
@@ -10,16 +10,16 @@ use ReflectionEnum;
 use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionUnionType;
-use Rushing\LaravelDataSchemas\Attributes\ArrayItems;
-use Rushing\LaravelDataSchemas\Attributes\Description;
-use Rushing\LaravelDataSchemas\Attributes\Example;
-use Rushing\LaravelDataSchemas\Contracts\SchemaIdentity;
-use Rushing\LaravelDataSchemas\Keywords;
-use Rushing\LaravelDataSchemas\Strategies\KeywordAttributesStrategy;
-use Rushing\LaravelDataSchemas\Strategies\MigrationAttributesStrategy;
-use Rushing\LaravelDataSchemas\Strategies\SchemaStrategy;
-use Rushing\LaravelDataSchemas\Strategies\SchemaStrategyContext;
-use Rushing\LaravelDataSchemas\Strategies\ValidationAttributeStrategy;
+use Schemastud\DataSchemas\Attributes\ArrayItems;
+use Schemastud\DataSchemas\Attributes\Description;
+use Schemastud\DataSchemas\Attributes\Example;
+use Schemastud\DataSchemas\Contracts\SchemaIdentity;
+use Schemastud\DataSchemas\Keywords;
+use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
+use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
+use Schemastud\DataSchemas\Strategies\SchemaStrategy;
+use Schemastud\DataSchemas\Strategies\SchemaStrategyContext;
+use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Lazy;

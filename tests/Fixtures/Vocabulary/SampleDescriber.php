@@ -1,10 +1,10 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures\Vocabulary;
+namespace Schemastud\DataSchemas\Tests\Fixtures\Vocabulary;
 
-use Rushing\LaravelDataSchemas\Vocabulary\KeywordDescriptor;
-use Rushing\LaravelDataSchemas\Vocabulary\KeywordVocabularyDescriber;
-use Rushing\LaravelDataSchemas\Vocabulary\ValueSource;
+use Schemastud\DataSchemas\Vocabulary\KeywordDescriptor;
+use Schemastud\DataSchemas\Vocabulary\KeywordVocabularyDescriber;
+use Schemastud\DataSchemas\Vocabulary\ValueSource;
 
 /**
  * A concrete describer over one keyword of each ValueSource — the mechanism's test subject.

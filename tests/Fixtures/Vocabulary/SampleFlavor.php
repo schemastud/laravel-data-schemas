@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures\Vocabulary;
+namespace Schemastud\DataSchemas\Tests\Fixtures\Vocabulary;
 
 enum SampleFlavor: string
 {

@@ -1,12 +1,12 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration\Rungs;
+namespace Schemastud\DataSchemas\Migration\Rungs;
 
-use Rushing\LaravelDataSchemas\Attributes\MigrateWith;
-use Rushing\LaravelDataSchemas\Keywords;
-use Rushing\LaravelDataSchemas\Migration\MigrationRequest;
-use Rushing\LaravelDataSchemas\Migration\MigrationRung;
-use Rushing\LaravelDataSchemas\Migration\TransformRegistry;
+use Schemastud\DataSchemas\Attributes\MigrateWith;
+use Schemastud\DataSchemas\Keywords;
+use Schemastud\DataSchemas\Migration\MigrationRequest;
+use Schemastud\DataSchemas\Migration\MigrationRung;
+use Schemastud\DataSchemas\Migration\TransformRegistry;
 use Rushing\Popcorn\Contracts\Invocable;
 
 /**

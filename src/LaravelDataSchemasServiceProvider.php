@@ -1,11 +1,11 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas;
+namespace Schemastud\DataSchemas;
 
 use Illuminate\Support\ServiceProvider;
-use Rushing\LaravelDataSchemas\Commands\GenerateJsonSchemaCommand;
-use Rushing\LaravelDataSchemas\Contracts\SchemaRegistry;
-use Rushing\LaravelDataSchemas\Lifecycle\FilesystemSchemaRegistry;
+use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
+use Schemastud\DataSchemas\Contracts\SchemaRegistry;
+use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
 
 class LaravelDataSchemasServiceProvider extends ServiceProvider
 {

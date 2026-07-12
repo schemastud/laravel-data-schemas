@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration;
+namespace Schemastud\DataSchemas\Migration;
 
 use Opis\JsonSchema\Helper;
 use Opis\JsonSchema\Validator;

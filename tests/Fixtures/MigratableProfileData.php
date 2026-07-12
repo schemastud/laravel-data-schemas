@@ -1,10 +1,10 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures;
+namespace Schemastud\DataSchemas\Tests\Fixtures;
 
-use Rushing\LaravelDataSchemas\Attributes\MigrateWith;
-use Rushing\LaravelDataSchemas\Attributes\WasNamed;
-use Rushing\LaravelDataSchemas\Contracts\SchemaIdentity;
+use Schemastud\DataSchemas\Attributes\MigrateWith;
+use Schemastud\DataSchemas\Attributes\WasNamed;
+use Schemastud\DataSchemas\Contracts\SchemaIdentity;
 use Spatie\LaravelData\Data;
 
 /**

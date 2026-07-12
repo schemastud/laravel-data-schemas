@@ -1,12 +1,12 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Commands;
+namespace Schemastud\DataSchemas\Commands;
 
 use Illuminate\Console\Command;
-use Rushing\LaravelDataSchemas\Actions\DiscoverDataClassesAction;
-use Rushing\LaravelDataSchemas\Actions\GenerateSchemasAction;
-use Rushing\LaravelDataSchemas\PathGenerators\PathGenerator;
-use Rushing\LaravelDataSchemas\Writers\Writer;
+use Schemastud\DataSchemas\Actions\DiscoverDataClassesAction;
+use Schemastud\DataSchemas\Actions\GenerateSchemasAction;
+use Schemastud\DataSchemas\PathGenerators\PathGenerator;
+use Schemastud\DataSchemas\Writers\Writer;
 
 class GenerateJsonSchemaCommand extends Command
 {

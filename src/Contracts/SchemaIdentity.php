@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Contracts;
+namespace Schemastud\DataSchemas\Contracts;
 
 use Spatie\LaravelData\Data;
 

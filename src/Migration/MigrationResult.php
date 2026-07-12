@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration;
+namespace Schemastud\DataSchemas\Migration;
 
 /**
  * The outcome of a migration attempt through the {@see MigrationLadder}.

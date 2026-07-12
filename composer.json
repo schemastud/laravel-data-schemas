@@ -1,5 +1,5 @@
 {
-    "name": "rushing/laravel-data-schemas",
+    "name": "schemastud/laravel-data-schemas",
     "description": "Generate JSON Schemas from Laravel Data objects with validation attributes",
     "keywords": [
         "laravel",
@@ -38,18 +38,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Rushing\\LaravelDataSchemas\\": "src/"
+            "Schemastud\\DataSchemas\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Rushing\\LaravelDataSchemas\\Tests\\": "tests/"
+            "Schemastud\\DataSchemas\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Rushing\\LaravelDataSchemas\\LaravelDataSchemasServiceProvider"
+                "Schemastud\\DataSchemas\\LaravelDataSchemasServiceProvider"
             ]
         },
         "branch-alias": {

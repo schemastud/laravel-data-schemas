@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Vocabulary;
+namespace Schemastud\DataSchemas\Vocabulary;
 
 use ReflectionMethod;
 use ReflectionNamedType;

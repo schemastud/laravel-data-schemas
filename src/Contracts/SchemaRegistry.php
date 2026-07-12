@@ -1,8 +1,8 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Contracts;
+namespace Schemastud\DataSchemas\Contracts;
 
-use Rushing\LaravelDataSchemas\Lifecycle\SchemaRegistryConflict;
+use Schemastud\DataSchemas\Lifecycle\SchemaRegistryConflict;
 
 /**
  * An immutable, $id-keyed store of frozen schema artifacts.

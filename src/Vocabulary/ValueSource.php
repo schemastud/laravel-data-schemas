@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Vocabulary;
+namespace Schemastud\DataSchemas\Vocabulary;
 
 /**
  * How a keyword's value domain is *reflected* from its owner — never a hand-authored

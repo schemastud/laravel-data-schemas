@@ -1,12 +1,12 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use Rushing\LaravelDataSchemas\Attributes\Keyword;
-use Rushing\LaravelDataSchemas\Generators\JsonSchemaGenerator;
+use Schemastud\DataSchemas\Attributes\Keyword;
+use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
 
 class KeywordAttributeFixtureData
 {

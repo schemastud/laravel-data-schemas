@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures;
+namespace Schemastud\DataSchemas\Tests\Fixtures;
 
 enum StatusEnum: string
 {

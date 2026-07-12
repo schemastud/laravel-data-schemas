@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Vocabulary;
+namespace Schemastud\DataSchemas\Vocabulary;
 
 /**
  * One extension keyword, declared once by its owner. It names the OWNER'S handle for the

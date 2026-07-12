@@ -1,9 +1,9 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Vocabulary;
+namespace Schemastud\DataSchemas\Vocabulary;
 
 use Closure;
-use Rushing\LaravelDataSchemas\Strategies\SchemaStrategy;
+use Schemastud\DataSchemas\Strategies\SchemaStrategy;
 
 /**
  * Binds one PHP attribute to the keyword(s) it contributes and the closure that stamps them

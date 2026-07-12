@@ -1,9 +1,9 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Rushing\LaravelDataSchemas\Lifecycle\SchemaFingerprint;
+use Schemastud\DataSchemas\Lifecycle\SchemaFingerprint;
 
 class SchemaFingerprintTest extends TestCase
 {

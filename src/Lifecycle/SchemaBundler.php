@@ -1,9 +1,9 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Lifecycle;
+namespace Schemastud\DataSchemas\Lifecycle;
 
 use Opis\JsonSchema\Validator;
-use Rushing\LaravelDataSchemas\Contracts\SchemaRegistry;
+use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 
 /**
  * Produces a self-contained JSON Schema 2020-12 compound document.

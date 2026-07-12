@@ -1,9 +1,9 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures;
+namespace Schemastud\DataSchemas\Tests\Fixtures;
 
-use Rushing\LaravelDataSchemas\Attributes\Description;
-use Rushing\LaravelDataSchemas\Attributes\Example;
+use Schemastud\DataSchemas\Attributes\Description;
+use Schemastud\DataSchemas\Attributes\Example;
 use Spatie\LaravelData\Attributes\DataCollectionOf;
 use Spatie\LaravelData\Attributes\Validation\Email;
 use Spatie\LaravelData\Attributes\Validation\Max;

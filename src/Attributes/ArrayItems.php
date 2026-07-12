@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Attributes;
+namespace Schemastud\DataSchemas\Attributes;
 
 use Attribute;
 

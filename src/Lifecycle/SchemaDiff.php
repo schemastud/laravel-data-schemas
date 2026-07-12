@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Lifecycle;
+namespace Schemastud\DataSchemas\Lifecycle;
 
 /**
  * A structural old-vs-new diff between two object schemas, reporting which

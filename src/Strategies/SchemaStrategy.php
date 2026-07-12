@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Strategies;
+namespace Schemastud\DataSchemas\Strategies;
 
 use ReflectionProperty;
 

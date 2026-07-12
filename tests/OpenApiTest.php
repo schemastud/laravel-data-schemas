@@ -1,9 +1,9 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests;
+namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Rushing\LaravelDataSchemas\Support\OpenApi;
+use Schemastud\DataSchemas\Support\OpenApi;
 
 class OpenApiTest extends TestCase
 {

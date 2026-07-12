@@ -1,10 +1,10 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Lifecycle;
+namespace Schemastud\DataSchemas\Lifecycle;
 
 use InvalidArgumentException;
-use Rushing\LaravelDataSchemas\Contracts\EnumeratesVersions;
-use Rushing\LaravelDataSchemas\Contracts\SchemaRegistry;
+use Schemastud\DataSchemas\Contracts\EnumeratesVersions;
+use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 
 /**
  * Filesystem {@see SchemaRegistry}: schemas are committed JSON artifacts under a

@@ -1,9 +1,9 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Writers;
+namespace Schemastud\DataSchemas\Writers;
 
 use Illuminate\Support\Facades\File;
-use Rushing\LaravelDataSchemas\Support\SchemaCollection;
+use Schemastud\DataSchemas\Support\SchemaCollection;
 
 class JsonSchemaWriter implements Writer
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Tests\Fixtures;
+namespace Schemastud\DataSchemas\Tests\Fixtures;
 
 /** A placeholder transform class-string referenced by #[MigrateWith]. */
 class StubAddressTransform {}

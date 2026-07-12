@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Lifecycle;
+namespace Schemastud\DataSchemas\Lifecycle;
 
 /**
  * Stable structural hash of a projected JSON Schema — the drift-guard input.

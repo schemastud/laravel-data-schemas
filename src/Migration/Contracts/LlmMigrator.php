@@ -1,8 +1,8 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Migration\Contracts;
+namespace Schemastud\DataSchemas\Migration\Contracts;
 
-use Rushing\LaravelDataSchemas\Migration\Rungs\LlmTryRung;
+use Schemastud\DataSchemas\Migration\Rungs\LlmTryRung;
 use Rushing\Popcorn\Contracts\Invocable;
 
 /**

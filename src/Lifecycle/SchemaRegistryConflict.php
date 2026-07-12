@@ -1,6 +1,6 @@
 <?php
 
-namespace Rushing\LaravelDataSchemas\Lifecycle;
+namespace Schemastud\DataSchemas\Lifecycle;
 
 use RuntimeException;
 

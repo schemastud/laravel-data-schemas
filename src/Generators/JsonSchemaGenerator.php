@@ -20,6 +20,7 @@ use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\SchemaStrategy;
 use Schemastud\DataSchemas\Strategies\SchemaStrategyContext;
 use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
+use Spatie\LaravelData\Attributes\Computed;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Lazy;
@@ -129,6 +130,16 @@ class JsonSchemaGenerator implements Generator
 
         foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             if ($property->isStatic()) {
+                continue;
+            }
+
+            // Spatie #[Computed] is output-only: spatie never fills it from input
+            // (it is derived in the constructor), so a request/form schema must not
+            // present it as an editable field. It stays in response/collapsed output
+            // and in the generated `.d.ts`. Honoring it here aligns the request
+            // schema with spatie's own fill contract — a generic Data concern, not a
+            // frame-specific rule.
+            if ($this->mode === 'request' && $this->isComputed($property)) {
                 continue;
             }
 
@@ -513,6 +524,15 @@ class JsonSchemaGenerator implements Generator
             'iterable' => 'array',
             default => 'string',
         };
+    }
+
+    /**
+     * A spatie #[Computed] property is derived, never input-filled — dropped from
+     * request/form schemas (see the request-mode guard in buildObjectSchema).
+     */
+    protected function isComputed(ReflectionProperty $property): bool
+    {
+        return ! empty($property->getAttributes(Computed::class));
     }
 
     protected function isRequired(ReflectionProperty $property): bool

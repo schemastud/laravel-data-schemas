@@ -48,6 +48,14 @@ class OverlayStack
                 $this->mutator->override($result, $action->target(), $action->value());
                 break;
 
+            case Action::OP_MERGE:
+                $this->mutator->merge($result, $action->target(), $action->value());
+                break;
+
+            case Action::OP_UNSET:
+                $this->mutator->unset($result, $action->target());
+                break;
+
             default:
                 throw new OverlayException(
                     "op '{$action->op()}' is recognised but not applied by the fold yet."

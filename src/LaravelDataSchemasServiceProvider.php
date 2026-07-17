@@ -6,6 +6,10 @@ use Illuminate\Support\ServiceProvider;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
+use Schemastud\DataSchemas\Overlay\DataOverlayRegistry;
+use Schemastud\DataSchemas\Overlay\DataOverlayResolver;
+use Schemastud\DataSchemas\Overlay\InMemoryOverlayRegistry;
+use Schemastud\DataSchemas\Overlay\StaticOverlayResolver;
 
 class LaravelDataSchemasServiceProvider extends ServiceProvider
 {
@@ -24,6 +28,13 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
 
             return new FilesystemSchemaRegistry($dir);
         });
+
+        // DataOverlay host-adapter seams (ADR-0089). The base binds trivial
+        // defaults — an empty static resolver and an in-memory registry (a
+        // singleton so registrations persist for the request). A host swaps in
+        // a context-aware resolver (tenant/locale) via the container.
+        $this->app->bind(DataOverlayResolver::class, StaticOverlayResolver::class);
+        $this->app->singleton(DataOverlayRegistry::class, InMemoryOverlayRegistry::class);
     }
 
     public function boot(): void

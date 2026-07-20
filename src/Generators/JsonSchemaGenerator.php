@@ -13,6 +13,9 @@ use ReflectionUnionType;
 use Schemastud\DataSchemas\Attributes\ArrayItems;
 use Schemastud\DataSchemas\Attributes\Description;
 use Schemastud\DataSchemas\Attributes\Example;
+use Schemastud\DataSchemas\Attributes\Keyword;
+use Schemastud\DataSchemas\Attributes\Title;
+use Schemastud\DataSchemas\Contracts\ProvidesEnumLabel;
 use Schemastud\DataSchemas\Contracts\SchemaIdentity;
 use Schemastud\DataSchemas\Keywords;
 use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
@@ -143,6 +146,16 @@ class JsonSchemaGenerator implements Generator
                 continue;
             }
 
+            // `x-hidden` drops the property from the emitted schema entirely — it
+            // never reaches the client, but stays on the Data class for server-side
+            // binding. Structurally the `#[Computed]` skip's peer, but mode-independent
+            // (hidden means gone in every mode). Skipped BEFORE its schema is built, so
+            // the `x-hidden` marker itself never ships. Keyed on the projected keyword
+            // NAME, so any owner's constant resolving to `x-hidden` triggers the drop.
+            if ($this->isHidden($property)) {
+                continue;
+            }
+
             $schema['properties'][$property->getName()] = $this->generatePropertySchema($property);
 
             if ($this->isRequired($property)) {
@@ -269,6 +282,10 @@ class JsonSchemaGenerator implements Generator
         // Optional => key may be absent from input.
         if ($info['optional']) {
             $schema[Keywords::Optional] = true;
+        }
+
+        if (! empty($titleAttrs = $property->getAttributes(Title::class))) {
+            $schema['title'] = $titleAttrs[0]->newInstance()->value;
         }
 
         if (! empty($descAttrs = $property->getAttributes(Description::class))) {
@@ -484,11 +501,23 @@ class JsonSchemaGenerator implements Generator
         $reflection = new ReflectionEnum($enumClass);
         $backingType = $reflection->getBackingType()?->getName();
 
-        $this->defs[$short] = [
+        $def = [
             'type' => $backingType === 'int' ? 'integer' : 'string',
             'title' => $short,
             'enum' => array_map(fn (BackedEnum $case) => $case->value, $enumClass::cases()),
         ];
+
+        // An enum opting into human labels (ProvidesEnumLabel) emits `enumNames`
+        // parallel to `enum`, so a rendered <select> shows "Daily", not "DAILY".
+        // Absent the contract, only `enum` is emitted (unchanged).
+        if (is_subclass_of($enumClass, ProvidesEnumLabel::class)) {
+            $def['enumNames'] = array_map(
+                fn (ProvidesEnumLabel $case) => $case->label(),
+                $enumClass::cases(),
+            );
+        }
+
+        $this->defs[$short] = $def;
 
         return '#/$defs/'.$short;
     }
@@ -533,6 +562,23 @@ class JsonSchemaGenerator implements Generator
     protected function isComputed(ReflectionProperty $property): bool
     {
         return ! empty($property->getAttributes(Computed::class));
+    }
+
+    /**
+     * A property carrying the `x-hidden` keyword (via `#[Keyword]`) is dropped from
+     * the emitted schema. Keyed on the resolved keyword NAME, not on the declaring
+     * constant, so a host's `App\Schema\Keywords::Hidden` and the foundation's
+     * `Keywords::Hidden` both trigger the drop — they resolve to the same string.
+     */
+    protected function isHidden(ReflectionProperty $property): bool
+    {
+        foreach ($property->getAttributes(Keyword::class) as $attribute) {
+            if ($attribute->newInstance()->name === Keywords::Hidden) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function isRequired(ReflectionProperty $property): bool

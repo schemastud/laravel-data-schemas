@@ -29,7 +29,6 @@ class JsonSchemaGeneratorTest extends TestCase
                     'type' => 'string',
                     'description' => 'Human-readable title.',
                     'maxLength' => 255,
-                    'examples' => ['string'],
                 ],
                 'email' => [
                     'type' => 'string',
@@ -43,12 +42,10 @@ class JsonSchemaGeneratorTest extends TestCase
                 ],
                 'bio' => [
                     'type' => ['string', 'null'],
-                    'examples' => ['string'],
                 ],
                 'nickname' => [
                     'type' => 'string',
                     'x-optional' => true,
-                    'examples' => ['string'],
                 ],
                 'user' => [
                     '$ref' => '#/$defs/UserData',
@@ -70,8 +67,8 @@ class JsonSchemaGeneratorTest extends TestCase
                     'type' => 'object',
                     'title' => 'UserData',
                     'properties' => [
-                        'id' => ['type' => 'string', 'examples' => ['string']],
-                        'name' => ['type' => 'string', 'examples' => ['string']],
+                        'id' => ['type' => 'string'],
+                        'name' => ['type' => 'string'],
                     ],
                     'required' => ['id', 'name'],
                 ],

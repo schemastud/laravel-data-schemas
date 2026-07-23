@@ -617,19 +617,12 @@ class JsonSchemaGenerator implements Generator
             return $schema['enum'][0];
         }
 
-        $type = $schema['type'] ?? null;
-        if (is_array($type)) {
-            $type = $type[0] ?? null;
-        }
-
-        return match ($type) {
-            'string' => 'string',
-            'integer' => 0,
-            'number' => 0,
-            'boolean' => true,
-            'array' => [],
-            default => null,
-        };
+        // No baseline example for a bare-typed leaf. The former placeholders (`'string'`, `0`,
+        // `true`, `[]`) were the type name echoed back — they carry no information, and a form
+        // renderer (RJSF) turns a lone `examples` entry into a phantom `<datalist>` dropdown on
+        // what should be a plain text/number input. Only format- and enum-derived examples above
+        // (email, uri, uuid, date-time, first enum) are meaningful, so only those are emitted.
+        return null;
     }
 
     /**

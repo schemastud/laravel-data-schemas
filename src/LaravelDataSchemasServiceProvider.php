@@ -3,6 +3,7 @@
 namespace Schemastud\DataSchemas;
 
 use Illuminate\Support\ServiceProvider;
+use Rushing\PipelineRegistry\PipelineRegistry;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
@@ -39,6 +40,14 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Contribute the resources:* projection pipelines (the open,
+        // foundation-tier slice) into the shared registry. Guarded so the
+        // package degrades gracefully if the pipeline-registry engine is absent.
+        if (class_exists(PipelineRegistry::class)) {
+            $this->app->make(PipelineRegistry::class)
+                ->mergePipelinesFrom(__DIR__.'/../config/pipelines');
+        }
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../config/data-schemas.php' => config_path('data-schemas.php'),

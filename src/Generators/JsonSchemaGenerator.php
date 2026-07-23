@@ -121,7 +121,9 @@ class JsonSchemaGenerator implements Generator
     {
         $schema = [
             'type' => 'object',
-            'title' => $class->getShortName(),
+            // A class-level #[Title] wins over the class short name — the root peer of the
+            // class-level #[Description] below (the attribute already declares TARGET_CLASS).
+            'title' => $this->getClassTitle($class) ?? $class->getShortName(),
             'properties' => [],
         ];
 
@@ -657,6 +659,13 @@ class JsonSchemaGenerator implements Generator
         $base = rtrim($this->config['base_uri'] ?? 'https://schemas.splicewire.app', '/');
 
         return $base.'/'.trim($name::schemaName(), '/').'/'.$name::schemaVersion();
+    }
+
+    protected function getClassTitle(ReflectionClass $class): ?string
+    {
+        $titleAttrs = $class->getAttributes(Title::class);
+
+        return ! empty($titleAttrs) ? $titleAttrs[0]->newInstance()->value : null;
     }
 
     protected function getClassDescription(ReflectionClass $class): ?string

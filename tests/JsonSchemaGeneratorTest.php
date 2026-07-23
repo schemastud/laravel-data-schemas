@@ -9,6 +9,7 @@ use Schemastud\DataSchemas\Tests\Fixtures\ContentOutlineItemData;
 use Schemastud\DataSchemas\Tests\Fixtures\EnumArrayData;
 use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
 use Schemastud\DataSchemas\Tests\Fixtures\ScalarArrayData;
+use Schemastud\DataSchemas\Tests\Fixtures\TitledData;
 
 class JsonSchemaGeneratorTest extends TestCase
 {
@@ -83,6 +84,21 @@ class JsonSchemaGeneratorTest extends TestCase
         ];
 
         $this->assertEquals($expected, $this->generate(SampleData::class));
+    }
+
+    public function test_class_level_title_sets_the_root_schema_title(): void
+    {
+        $schema = $this->generate(TitledData::class);
+
+        // A class-level #[Title] wins over the class short name (which would be 'TitledData').
+        $this->assertSame('A Custom Title', $schema['title']);
+        $this->assertSame('A resource whose root title comes from a class-level attribute.', $schema['description']);
+    }
+
+    public function test_root_title_falls_back_to_the_class_short_name_without_a_title_attribute(): void
+    {
+        // SampleData carries #[Description] but no class-level #[Title] — the root title stays the class name.
+        $this->assertSame('SampleData', $this->generate(SampleData::class)['title']);
     }
 
     public function test_optional_is_not_required_and_carries_vendor_key(): void

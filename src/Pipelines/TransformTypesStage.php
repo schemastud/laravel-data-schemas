@@ -48,6 +48,7 @@ class TransformTypesStage
 
         $haystack = file_get_contents($source);
         $extracted = [];
+        $names = [];
 
         foreach ($types as $type) {
             $slice = $this->extractType($haystack, $type);
@@ -59,15 +60,66 @@ class TransformTypesStage
             }
 
             $extracted[] = $slice;
+            $names[] = $type;
             $context->note("TransformTypesStage: extracted {$type}");
+        }
+
+        // A sliced type may reference a *sibling* type by the namespaced name it carries
+        // in the app's single generated `.d.ts` (`App.Enums.TokenProvenance`,
+        // `App.Data.FooData`). The `_resources` slice is a flat, self-contained module with
+        // no `App` global namespace, so those references must be rewritten to the bare
+        // local names the slice actually emits — otherwise the projection is a false green
+        // (skipLibCheck hides the dangling ref in the bundle, but a consumer resolves the
+        // property to a missing namespace). Rewrite refs to co-sliced types down to their
+        // bare name; flag any that remain (referenced but not sliced) so the pipeline author
+        // adds them to `types`.
+        $body = implode("\n\n", $extracted);
+        $body = $this->rewriteSiblingRefs($body, $names);
+
+        foreach ($this->danglingRefs($body) as $ref) {
+            $context->note("TransformTypesStage: DANGLING ref [{$ref}] — add its type to the [types] slice");
         }
 
         $banner = "// GENERATED — {$scope}/_resources — do not edit by hand.\n"
             ."// Projected from app/Data/* via the resources:{$scope} pipeline.\n\n";
 
-        $context->put($emit, $banner.implode("\n\n", $extracted)."\n");
+        $context->put($emit, $banner.$body."\n");
 
         return $next($context);
+    }
+
+    /**
+     * Rewrite `App.<Ns...>.<Name>` references to the bare `<Name>` for every `<Name>` that
+     * was itself sliced into this bundle, so the flat module resolves internally.
+     *
+     * @param  array<int, string>  $names  bare names extracted into this slice
+     */
+    private function rewriteSiblingRefs(string $body, array $names): string
+    {
+        foreach ($names as $name) {
+            $body = preg_replace(
+                '/\bApp(?:\.[A-Za-z_]\w*)*\.'.preg_quote($name, '/').'\b/',
+                $name,
+                $body
+            );
+        }
+
+        return $body;
+    }
+
+    /**
+     * Namespaced `App.*` references still present after sibling rewriting — types the slice
+     * references but does not carry. Returned distinct, for author-facing notes.
+     *
+     * @return array<int, string>
+     */
+    private function danglingRefs(string $body): array
+    {
+        if (! preg_match_all('/\bApp(?:\.[A-Za-z_]\w*)+\b/', $body, $matches)) {
+            return [];
+        }
+
+        return array_values(array_unique($matches[0]));
     }
 
     /**

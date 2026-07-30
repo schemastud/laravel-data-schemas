@@ -18,14 +18,23 @@ namespace Schemastud\DataSchemas\Overlay\Lens;
 // than letting it corrupt content.
 class ReversibleResolver
 {
-    // canonical → rendering. Null association = plain identity embed.
+    // canonical → rendering. Null association = plain identity embed. When the
+    // association carries a stored complement and its lens knows how to re-apply
+    // one, the rendering-private state is restored on the way out — closing the
+    // symmetric-with-complement loop.
     public function get(?LensAssociation $assoc, mixed $canonical): mixed
     {
         if ($assoc === null) {
             return $canonical;
         }
 
-        return $assoc->lens->get($canonical);
+        $rendering = $assoc->lens->get($canonical);
+
+        if ($assoc->complement !== null && $assoc->lens instanceof PrivateStateLens) {
+            $rendering = $assoc->lens->applyComplement($rendering, $assoc->complement);
+        }
+
+        return $rendering;
     }
 
     // rendering → canonical, reconstructing from the retained prior canonical

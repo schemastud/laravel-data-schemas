@@ -4,8 +4,8 @@ namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Schemastud\DataSchemas\Overlay\Lens\ComplementingLens;
-use Schemastud\DataSchemas\Overlay\Lens\Direction;
 use Schemastud\DataSchemas\Overlay\Lens\DirectedLens;
+use Schemastud\DataSchemas\Overlay\Lens\Direction;
 use Schemastud\DataSchemas\Overlay\Lens\Fidelity;
 use Schemastud\DataSchemas\Overlay\Lens\IdentityLens;
 use Schemastud\DataSchemas\Overlay\Lens\LensAssociation;

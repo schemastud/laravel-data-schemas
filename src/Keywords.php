@@ -20,6 +20,10 @@ namespace Schemastud\DataSchemas;
  *    mode-independent peer of the `#[Computed]` skip. Recognized by the generator
  *    regardless of which owner's constant supplied the string.
  *  - `x-migrate-from` / `x-migrate` — the migration-ladder rename/transform pins
+ *  - `x-source` — the projection dialect ({@see Migration\Source\SourceProjectionRung}):
+ *    `{ path, cast?, default? }` extracts + coerces a nested foreign-source value into
+ *    this property when the ladder is entered from a FOREIGN shape. Declarative,
+ *    execution-free (data-not-code) — the bounded sibling of `x-migrate-from`.
  *
  * Both the emit sites (generator, migration strategy) and the read sites (migration
  * rungs) reference these constants, so a keyword name lives in exactly one place.
@@ -36,6 +40,8 @@ class Keywords
 
     public const Migrate = 'x-migrate';
 
+    public const Source = 'x-source';
+
     /**
      * Every `x-` keyword this package owns / emits.
      *
@@ -43,6 +49,6 @@ class Keywords
      */
     public static function owned(): array
     {
-        return [self::Lazy, self::Optional, self::Hidden, self::MigrateFrom, self::Migrate];
+        return [self::Lazy, self::Optional, self::Hidden, self::MigrateFrom, self::Migrate, self::Source];
     }
 }

@@ -19,22 +19,22 @@ namespace Schemastud\DataSchemas\Overlay\Lens;
 // This type is purely additive: it changes nothing about the existing
 // override/merge/unset fold. A plain overlay with no LensAssociation declared
 // resolves exactly as it does today.
-final class LensAssociation
+class LensAssociation
 {
     public function __construct(
         // JSON-LD `@id` of the canonical record (ADOPT — RFC-grade addressing).
-        public readonly string $id,
+        public string $id,
         // JSON Pointer / JSONPath addressing the rendering within the record.
-        public readonly string $locator,
+        public string $locator,
         // Which side is canonical, so a resolver can tell get from put.
-        public readonly Direction $direction,
+        public Direction $direction,
         // The honest round-trip claim; the resolver proves or downgrades it.
-        public readonly Fidelity $fidelity,
+        public Fidelity $fidelity,
         // The get/put mechanism (ADR-0038 project()/hydrate(), made reversible).
-        public readonly DirectedLens $lens,
+        public DirectedLens $lens,
         // Reserved: the stored inverse the ops imply — rendering-private state
         // to reconstruct on the return trip. Null for the near-bijective case.
-        public readonly mixed $complement = null,
+        public mixed $complement = null,
     ) {}
 
     // Convenience: the near-bijective declaration — a lossless-eligible lens in

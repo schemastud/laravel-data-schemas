@@ -569,7 +569,7 @@ class JsonSchemaGenerator implements Generator
     /**
      * A property carrying the `x-hidden` keyword (via `#[Keyword]`) is dropped from
      * the emitted schema. Keyed on the resolved keyword NAME, not on the declaring
-     * constant, so a host's `App\Schema\Keywords::Hidden` and the foundation's
+     * constant, so a host's `Splicewire\Tower\Schema\Keywords::Hidden` and the foundation's
      * `Keywords::Hidden` both trigger the drop — they resolve to the same string.
      */
     protected function isHidden(ReflectionProperty $property): bool

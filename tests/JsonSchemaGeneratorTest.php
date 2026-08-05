@@ -10,6 +10,7 @@ use Schemastud\DataSchemas\Tests\Fixtures\EnumArrayData;
 use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
 use Schemastud\DataSchemas\Tests\Fixtures\ScalarArrayData;
 use Schemastud\DataSchemas\Tests\Fixtures\TitledData;
+use Schemastud\DataSchemas\Tests\Fixtures\UploadData;
 
 class JsonSchemaGeneratorTest extends TestCase
 {
@@ -253,5 +254,18 @@ class JsonSchemaGeneratorTest extends TestCase
 
         $this->assertArrayNotHasKey('$schema', $schema);
         $this->assertArrayNotHasKey('$id', $schema);
+    }
+
+    public function test_it_maps_an_uploaded_file_property_to_a_binary_string(): void
+    {
+        $schema = $this->generate(UploadData::class);
+
+        // The file leaf keeps `type: string` but is tagged `format: binary`,
+        // upstream of the unknown-class string-degrade catch-all.
+        $this->assertSame('string', $schema['properties']['file']['type']);
+        $this->assertSame('binary', $schema['properties']['file']['format']);
+
+        // A non-file leaf is untouched — no spurious binary format.
+        $this->assertArrayNotHasKey('format', $schema['properties']['caption']);
     }
 }

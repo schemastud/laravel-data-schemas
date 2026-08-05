@@ -265,6 +265,12 @@ class JsonSchemaGenerator implements Generator
             }
         }
 
+        // A binary-format leaf (e.g. an UploadedFile property) carries `format: binary`
+        // so OpenAPI consumers render it as a file upload rather than a plain string.
+        if ($info['format'] !== null && ! isset($schema['format'])) {
+            $schema['format'] = $info['format'];
+        }
+
         // Scalar array item type (string[], int[], …) via #[ArrayItems] — strict
         // providers require `items` on every array. A backed-enum class as the item
         // type inlines its values (a list of enum-valued scalars).
@@ -327,7 +333,7 @@ class JsonSchemaGenerator implements Generator
      * (legacy inlined nodes) or an absolute versioned `$id` (opt-in addressable
      * nodes).
      *
-     * @return array{jsonTypes: string[], ref: ?string, arrayItemRef: ?string, nullable: bool, optional: bool, lazy: bool}
+     * @return array{jsonTypes: string[], ref: ?string, arrayItemRef: ?string, nullable: bool, optional: bool, lazy: bool, format: ?string}
      */
     protected function analyzeType(ReflectionProperty $property): array
     {
@@ -345,6 +351,7 @@ class JsonSchemaGenerator implements Generator
         $optional = false;
         $lazy = false;
         $hasArray = false;
+        $format = null;
 
         foreach ($members as $member) {
             if (! $member instanceof ReflectionNamedType) {
@@ -411,6 +418,16 @@ class JsonSchemaGenerator implements Generator
                 continue;
             }
 
+            // An uploaded file serializes as a binary string (multipart/form-data).
+            // Map it explicitly before the string-degrade catch-all so upload DTOs
+            // keep `{type: string, format: binary}` instead of a bare string.
+            if (is_a($name, 'Illuminate\\Http\\UploadedFile', true)) {
+                $jsonTypes[] = 'string';
+                $format = 'binary';
+
+                continue;
+            }
+
             // Unknown class — degrade to string rather than crash.
             $jsonTypes[] = 'string';
         }
@@ -430,6 +447,7 @@ class JsonSchemaGenerator implements Generator
             'nullable' => $nullable,
             'optional' => $optional,
             'lazy' => $lazy,
+            'format' => $format,
         ];
     }
 

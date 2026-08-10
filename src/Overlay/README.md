@@ -1,6 +1,6 @@
 # DataOverlay fold
 
-The array-native core of DataOverlay (ADR-0089 / `.scratch/data-json-overlays/SPEC.md`): an
+The array-native core of DataOverlay (ADR-0089): an
 ordered stack of overlay documents laid over a whole JSON document — a schema *or* an instance —
 through one shared format. This slice lands the addressing substrate, the fold loop, the document
 contract, and the first op (`override`).

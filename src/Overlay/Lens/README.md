@@ -34,6 +34,26 @@ complement). If none holds, the pair stays **lossy**.
 - `certify(assoc, samples)` — exercises the laws and **downgrades a law-breaking lens to `lossy`**. It
   relabels the claim; it never corrupts content.
 
+## The registry (`LensRegistry`)
+
+Declared lenses are enumerable. A `LensRegistration` carries a `key` (`vendor/lens-name` — *not* the
+association's `@id`, since two lenses legitimately share one canonical), a **tier**, the association
+(or a closure building it lazily), and a `LensEvidence` set.
+
+| tier | claim |
+|---|---|
+| `host-applied` | one host's carrier convenience — visible fleet-wide, authoritative nowhere |
+| `engine-authoritative` | the engine's own binding for that `@id` — the projection every host is measured against |
+
+Register from your own provider's `boot()`; the registry is a container singleton and describes itself
+into beam's manifest index (`splicewire:beam:manifests --json`) when a beam host is present.
+
+**Fidelity is certified here, never claimed.** There is deliberately no `fidelity()` reader on a
+registration: `LensRegistry::certifiedFidelity($key)` exercises the laws against the submitted evidence,
+and an **empty** evidence set certifies `lossy` — the laws over zero samples are vacuously true, so
+"submitted nothing" must not read as "survived everything". Registration is discoverability only: nothing
+dispatches through the registry, so a host-applied lens becomes *visible* without becoming authoritative.
+
 ## Vendor seam (ADR-0092)
 
 This **mechanism** is fully-open (`schemastud/laravel-data-schemas`). **Applied lenses**

@@ -4,6 +4,13 @@ Converts your Spatie Laravel Data objects into JSON Schema files, preserving val
 descriptions, and examples. Useful for AI-powered applications, API documentation, and frontend
 validation.
 
+## Particle doctrine
+
+Before adding or changing any I/O surface (HTTP route, MCP tool, Inertia page, command), read
+`~/Workspaces/splicewire-beam-runbook/references/particle-doctrine.md` — the
+declare-every-boundary-crossing-shape invariant, its three declaration sites, the four exceptions,
+and `splicewire:beam:manifests --json` for locating the registry behind a surface.
+
 ## Vendored family-package conventions
 
 Any repo that vendors another family repo's code (composer `vendor/<vendor>/<pkg>/`, npm

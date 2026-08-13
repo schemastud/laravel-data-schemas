@@ -17,6 +17,19 @@ return [
     | Paths to scan for Data objects. The generator will recursively search
     | these directories for classes extending Spatie\LaravelData\Data.
     |
+    | SCOPE — app-only BY DESIGN (particle-doctrine-followups 14b). The on-disk
+    | schema tree (`output_directory`) is the APP's own published, committed
+    | schema artifact set — which is why discovery defaults to the app's data
+    | dir and no fleet host widens it. This is deliberately NARROWER than the
+    | TypeScript leg (which scans package data dirs and gap-fills off the live
+    | route table): a package-owned DTO still reaches the OpenAPI spec, because
+    | the Scribe strategies invoke this generator IN MEMORY rather than reading
+    | this tree — the disk tree and the spec are two differently-scoped
+    | projections of one generator, on purpose. A package that wants published
+    | schema files ships its own; an app that wants package DTOs in ITS tree
+    | widens this list knowingly. Beam's `schema.projection-drift` audit scopes
+    | itself to these paths for the same reason.
+    |
     */
     'auto_discover_types' => [
         app_path('Data'),

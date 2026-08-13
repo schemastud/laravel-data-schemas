@@ -73,10 +73,7 @@ class AcceptanceGate
      */
     protected function namespacesAccept(array $candidate, array $targetSchema): bool
     {
-        $declarations = array_intersect_key($targetSchema, [
-            Vocabulary::Namespace => true,
-            Vocabulary::Namespaced => true,
-        ]);
+        $declarations = Vocabulary::declarationsOf($targetSchema);
 
         if ($declarations === []) {
             return true;

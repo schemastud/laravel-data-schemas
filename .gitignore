@@ -12,3 +12,4 @@ Thumbs.db
 *.swo
 *~
 CLAUDE.md
+composer.local.json

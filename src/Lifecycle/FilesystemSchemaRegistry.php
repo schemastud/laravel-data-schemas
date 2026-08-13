@@ -8,8 +8,12 @@ use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 
 /**
  * Filesystem {@see SchemaRegistry}: schemas are committed JSON artifacts under a
- * configurable directory, one file per `$id`. The `$id` is encoded into a safe,
- * reversible filename, so resolving by `$id` is a direct file lookup.
+ * configurable directory, one file per `$id`. The `$id` is encoded into a safe filename —
+ * NOT a reversible one: the slug keeps only the LAST 60 characters of the encoded `$id`
+ * (a long absolute URI loses its head — e.g. the leading `ht` of `https`), so the true
+ * `$id` always comes from the file's own `$id` field; the fingerprint suffix is what makes
+ * the name collision-safe. Resolving by `$id` is still a direct lookup (same encoding both
+ * sides).
  *
  * Immutability / write-once: registering an `$id` that already exists with a
  * DIFFERENT structural fingerprint throws {@see SchemaRegistryConflict}. The

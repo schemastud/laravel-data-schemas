@@ -4,12 +4,19 @@ Converts your Spatie Laravel Data objects into JSON Schema files, preserving val
 descriptions, and examples. Useful for AI-powered applications, API documentation, and frontend
 validation.
 
-## Particle doctrine
+## A declared Data class is the input, always
 
-Before adding or changing any I/O surface (HTTP route, MCP tool, Inertia page, command), read
-`splicewire/laravel-beam`'s `docs/agents/particle-doctrine.md` — the
-declare-every-boundary-crossing-shape invariant, its three declaration sites, the four exceptions,
-and `splicewire:beam:manifests --json` for locating the registry behind a surface.
+This package projects a Data class into a JSON Schema. It never infers a shape from an array, a
+docblock, or a runtime sample — if a shape is not declared, there is nothing here to generate from.
+
+Consumers routinely build a stricter rule on top of that. A CMS runtime, for instance, may require
+that *every* boundary-crossing shape — HTTP request and response bodies, tool inputs and outputs,
+event payloads — be a declared Data class rather than an inline array, so one declaration drives the
+schema, the API docs, and the generated client types together. Enforcing that is the consumer's job.
+
+The obligation here is narrower and absolute: whatever Data class arrives projects **faithfully** —
+validation rules, descriptions, examples, nullability and all. A consumer's doctrine is only worth
+having if the projection under it is exact.
 
 ## Vendored family-package conventions
 

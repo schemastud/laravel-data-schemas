@@ -523,7 +523,12 @@ class JsonSchemaGenerator implements Generator
 
         $def = [
             'type' => $backingType === 'int' ? 'integer' : 'string',
-            'title' => $short,
+            // The enum's OWN #[Title] when it opts in (a raw class short-name like "UxType" leaking
+            // as a rendered field label is exactly what Title exists to prevent — found live: a
+            // property's own #[Title] does override this via the sibling-title RJSF merge, but a
+            // property with no override was stuck with the class name regardless). Falls back to the
+            // short name, unchanged, for every enum that hasn't opted in.
+            'title' => $this->getClassTitle($reflection) ?? $short,
             'enum' => array_map(fn (BackedEnum $case) => $case->value, $enumClass::cases()),
         ];
 

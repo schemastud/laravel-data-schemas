@@ -4,6 +4,7 @@ namespace Schemastud\DataSchemas\Migration;
 
 use Opis\JsonSchema\Helper;
 use Opis\JsonSchema\Validator;
+use Schemastud\DataSchemas\Support\OpisSchema;
 use Schemastud\JsonNs\Vocab\VocabularyValidator;
 use Schemastud\JsonNs\Vocabulary;
 
@@ -26,6 +27,10 @@ use Schemastud\JsonNs\Vocabulary;
  * (JsonNsServiceProvider) — resolved lazily so the bare `new AcceptanceGate` construction
  * sites (the ladder, the rungs) enforce identically to container-made gates. A host with no
  * json-ns wiring keeps the plain structural gate.
+ *
+ * Parity extends to the schema's own identity (beam-facade ticket 51): both doors prepare the
+ * document through {@see OpisSchema::withoutRelativeId()}, so a schema carrying a relative `$id`
+ * cannot pass the formatted door and be reported non-conforming here.
  */
 class AcceptanceGate
 {
@@ -42,8 +47,10 @@ class AcceptanceGate
      */
     public function accepts(array $candidate, array $targetSchema): bool
     {
-        // opis validates against a stdClass schema/data graph.
-        $schema = Helper::toJSON($targetSchema);
+        // opis validates against a stdClass schema/data graph. A relative `$id` is stripped first,
+        // in the SAME preparation the formatted intake door runs — see {@see OpisSchema}, which is
+        // what makes this class's parity claim true by construction rather than by intention.
+        $schema = Helper::toJSON(OpisSchema::withoutRelativeId($targetSchema));
         $data = Helper::toJSON($candidate);
 
         try {

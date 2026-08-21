@@ -11,7 +11,7 @@ use Schemastud\JsonNs\Vocab\VocabularyValidator;
  * beam-namespace-wiring ticket 03 — the pipeline write path's boolean gate enforces the SAME
  * per-namespace `$vocabulary` scoping the formatted intake door does (ticket 02), so a
  * namespaced document can never pass one door and not the other. The fixture MIRRORS ticket
- * 02's (laravel-beam `tests/Validation/SchemaFormValidatorTest` +
+ * 02's (laravel-beam `tests/Validation/SchemaIntakeValidatorTest` +
  * `tests/Intake/PublicIntakeRouteTest`): same vocabulary shape (`sources` required), same
  * schema declarations, same payloads.
  */
@@ -54,7 +54,7 @@ class AcceptanceGateNamespaceTest extends TestCase
     public function test_rejects_the_candidate_ticket_02_proved_fails_the_intake_door(): void
     {
         // Structurally valid, but the namespaced subtree violates its $vocabulary (`sources`
-        // missing) — the same payload SchemaFormValidator returns a formatted error for.
+        // missing) — the same payload SchemaIntakeValidator returns a formatted error for.
         $this->assertFalse($this->namespacedGate()->accepts(
             ['title' => 'ok', 'splice:grounding' => ['nope' => true]],
             $this->namespacedTargetSchema(),

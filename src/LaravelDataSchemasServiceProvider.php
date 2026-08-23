@@ -13,6 +13,7 @@ use Schemastud\DataSchemas\Overlay\InMemoryOverlayRegistry;
 use Schemastud\DataSchemas\Overlay\Lens\LensRegistry;
 use Schemastud\DataSchemas\Overlay\Lens\ReversibleResolver;
 use Schemastud\DataSchemas\Overlay\StaticOverlayResolver;
+use Schemastud\DataSchemas\Strategies\SchemaStrategiesRegistry;
 
 class LaravelDataSchemasServiceProvider extends ServiceProvider
 {
@@ -43,6 +44,13 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         // so registrations from every provider accumulate into one enumerable surface;
         // seeded with nothing, because the mechanism ships no lenses of its own.
         $this->app->singleton(LensRegistry::class, fn () => new LensRegistry(new ReversibleResolver));
+
+        // The declaration `config('data-schemas.strategies')` never had. The strategy pipeline takes
+        // five cross-vendor registrants and had no class, so no attribute and no index membership —
+        // this package owns the config key, so this package binds the adapter (registry-kernel
+        // ticket 08 D6/D7: a registry describes itself, and nobody describes on another's behalf).
+        // The array stays the storage; every existing consumer still reads the plain list.
+        $this->app->singleton(SchemaStrategiesRegistry::class);
     }
 
     public function boot(): void

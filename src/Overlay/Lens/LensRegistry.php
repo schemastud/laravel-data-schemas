@@ -3,6 +3,9 @@
 namespace Schemastud\DataSchemas\Overlay\Lens;
 
 use InvalidArgumentException;
+use Rushing\Popcorn\Registries\IsRegistry;
+use Rushing\Popcorn\Registries\OnDuplicate;
+use Rushing\Popcorn\Registries\RegistryArity;
 
 // The registry of declared lenses — the answer to "which lenses exist in this
 // estate?", a question that until now had no way to be asked.
@@ -34,6 +37,18 @@ use InvalidArgumentException;
 // and a registry parked in a paid engine would be unreachable from the very hosts
 // whose invisible lenses motivated it. A host composing the lens mechanism without
 // the paid kernels can still be discovered.
+#[IsRegistry(
+    root: 'schemas.lenses',
+    of: 'declared lenses (canonical ↔ rendering, law-checked), each tiered host-applied or engine-authoritative',
+    arity: RegistryArity::RunAll,
+    onDuplicate: OnDuplicate::Reject,
+    note: 'Reject is declared, not inherited, and this class is the estate\'s argument for the policy '
+        .'existing at all: a silent last-write-wins is how a registry of three lenses reports two. RunAll '
+        .'because the product is DISCOVERABILITY rather than dispatch — even forId() returns every lens '
+        .'over an @id, since picking would mean this registry deciding which host is right about a '
+        .'canonical it does not own.',
+    order: 30,
+)]
 class LensRegistry
 {
     /** @var array<string, LensRegistration> */

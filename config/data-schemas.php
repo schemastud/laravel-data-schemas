@@ -175,8 +175,26 @@ return [
     | Classes that DO NOT implement SchemaIdentity are unaffected — they keep
     | the short-name `$id` and `#/$defs/Short` inlining (backward compatible).
     |
+    | THE AUTHORITY IS THE ORIGIN THAT SERVES THE SCHEMA, so this package ships
+    | no default: a fleet-wide default can only be one vendor's domain, stamped
+    | onto every other vendor's schemas. Tri-state:
+    |
+    |   null (unset) — throws MissingSchemaBaseUri the moment a SchemaIdentity
+    |                  class is generated. An `$id` is write-once, so an
+    |                  undecided authority must fail, never fall back.
+    |   false        — this host opts out of versioned identity: SchemaIdentity
+    |                  classes keep the short-name `$id`, and no schema-serving
+    |                  route is mounted.
+    |   a URI string — mint `<base_uri>/<name>/<version>` and serve at that origin.
+    |
+    | Keep it PATH-shaped (`https://app.example.com/schemas`), never a query
+    | string: `SchemaId`/`NamespaceUri` (ADR-0191) parse the stem and version as
+    | trailing path segments, and JSON Schema resolves a relative `$ref` against
+    | this base per RFC 3986 — a query base would silently resolve refs against
+    | the path and drop the id.
+    |
     */
-    'base_uri' => 'https://schemas.splicewire.app',
+    'base_uri' => null,
 
     /*
     |--------------------------------------------------------------------------

@@ -663,7 +663,14 @@ class JsonSchemaGenerator implements Generator
 
     /**
      * The absolute versioned `$id` for a class that opts into versioning, or
-     * null when it does not implement {@see SchemaIdentity}.
+     * null when it does not implement {@see SchemaIdentity} — or when this host
+     * has opted out of versioned identity with `base_uri => false`.
+     *
+     * `base_uri` is deliberately tri-state and has NO default: a `$id` names the
+     * origin that serves the schema, so the authority belongs to the host, never
+     * to this package. Unconfigured is a decision nobody has made yet, and an
+     * `$id` is write-once — so it throws rather than guessing.
+     * See {@see MissingSchemaBaseUri}.
      */
     protected function versionedId(ReflectionClass $class): ?string
     {
@@ -671,10 +678,21 @@ class JsonSchemaGenerator implements Generator
             return null;
         }
 
-        $name = $class->getName();
-        $base = rtrim($this->config['base_uri'] ?? 'https://schemas.splicewire.app', '/');
+        $base = $this->config['base_uri'] ?? null;
 
-        return $base.'/'.trim($name::schemaName(), '/').'/'.$name::schemaVersion();
+        // Opted out: fall back to the short-name `$id`, exactly as if the class
+        // had never implemented SchemaIdentity.
+        if ($base === false) {
+            return null;
+        }
+
+        if (! is_string($base) || trim($base) === '') {
+            throw new MissingSchemaBaseUri($class->getName());
+        }
+
+        $name = $class->getName();
+
+        return rtrim($base, '/').'/'.trim($name::schemaName(), '/').'/'.$name::schemaVersion();
     }
 
     protected function getClassTitle(ReflectionClass $class): ?string

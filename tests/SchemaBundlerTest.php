@@ -14,7 +14,10 @@ class SchemaBundlerTest extends TestCase
 {
     private function generate(string $class, bool $strict = false): array
     {
-        $gen = new JsonSchemaGenerator(['schema_metadata' => ['$id' => true, '$schema' => true]]);
+        $gen = new JsonSchemaGenerator([
+            'base_uri' => 'https://app.example.test/schemas',
+            'schema_metadata' => ['$id' => true, '$schema' => true],
+        ]);
 
         return $strict
             ? $gen->forLlmStrict()->generate(new ReflectionClass($class))
@@ -26,7 +29,7 @@ class SchemaBundlerTest extends TestCase
         $document = $this->generate(VersionedArticleData::class);
         $bundle = (new SchemaBundler)->bundle($document);
 
-        $authorId = 'https://schemas.splicewire.app/content/author/2';
+        $authorId = 'https://app.example.test/schemas/content/author/2';
 
         // The embedded resource is present and retains its own $id (a 2020-12
         // bundled resource — offline-portable yet re-resolvable).
@@ -78,7 +81,7 @@ class SchemaBundlerTest extends TestCase
         // references it by absolute $id (no inline $defs entry).
         $dir = sys_get_temp_dir().'/lds-bundler-'.uniqid();
         $registry = new FilesystemSchemaRegistry($dir);
-        $authorId = 'https://schemas.splicewire.app/content/author/2';
+        $authorId = 'https://app.example.test/schemas/content/author/2';
         $registry->register([
             '$id' => $authorId,
             'type' => 'object',
@@ -86,7 +89,7 @@ class SchemaBundlerTest extends TestCase
         ]);
 
         $root = [
-            '$id' => 'https://schemas.splicewire.app/content/article/3',
+            '$id' => 'https://app.example.test/schemas/content/article/3',
             'type' => 'object',
             'properties' => ['author' => ['$ref' => $authorId]],
         ];

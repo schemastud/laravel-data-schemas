@@ -2,11 +2,11 @@
 
 namespace Schemastud\DataSchemas\Migration;
 
-use Rushing\Popcorn\Strategy\Strategy;
-use Rushing\Popcorn\Strategy\StrategyResult;
+use Rushing\Popcorn\Ladders\Rung;
+use Rushing\Popcorn\Ladders\RungResult;
 
 /**
- * Base class for a deterministic migration rung — one popcorn {@see Strategy} in
+ * Base class for a deterministic migration rung — one popcorn {@see Rung} in
  * the {@see MigrationLadder}. It enforces the uniform discipline so every rung
  * behaves identically at the seams:
  *
@@ -14,13 +14,13 @@ use Rushing\Popcorn\Strategy\StrategyResult;
  *  2. delegate to {@see propose()} for the rung-specific candidate;
  *  3. run the candidate through the {@see AcceptanceGate} against the TARGET
  *     schema — accepted only if it validates;
- *  4. on acceptance, return a {@see StrategyResult} carrying the migrated payload;
+ *  4. on acceptance, return a {@see RungResult} carrying the migrated payload;
  *     otherwise return null (ABSTAIN) so the ladder demotes to the next rung.
  *
  * A rung that cannot even propose (no applicable change) also abstains by
  * returning null from {@see propose()}.
  */
-abstract class MigrationRung implements Strategy
+abstract class MigrationRung implements Rung
 {
     public function __construct(
         protected AcceptanceGate $gate = new AcceptanceGate,
@@ -34,7 +34,7 @@ abstract class MigrationRung implements Strategy
      */
     abstract protected function propose(MigrationRequest $request): ?array;
 
-    public function attempt(array $input): ?StrategyResult
+    public function attempt(array $input): ?RungResult
     {
         $request = MigrationRequest::fromInput($input);
         if ($request === null) {
@@ -52,7 +52,7 @@ abstract class MigrationRung implements Strategy
             return null;
         }
 
-        return new StrategyResult($candidate, $this->confidence, $this->name());
+        return new RungResult($candidate, $this->confidence, $this->name());
     }
 
     /**

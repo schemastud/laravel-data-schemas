@@ -2,7 +2,7 @@
 
 namespace Schemastud\DataSchemas\Migration;
 
-use Rushing\Popcorn\Strategy\StrategyLadder;
+use Rushing\Popcorn\Ladders\Ladder;
 use Schemastud\DataSchemas\Lifecycle\SchemaDiff;
 use Schemastud\DataSchemas\Migration\Rungs\CustomTransformRung;
 use Schemastud\DataSchemas\Migration\Rungs\DeclaredMappingRung;
@@ -11,7 +11,7 @@ use Schemastud\DataSchemas\Migration\Rungs\StructuralRung;
 use Schemastud\DataSchemas\Migration\Source\ForeignSource;
 
 /**
- * The deterministic migration engine: a popcorn {@see StrategyLadder} of migration
+ * The deterministic migration engine: a popcorn {@see Ladder} of migration
  * rungs run STRONGEST-FIRST with the uniform acceptance gate, falling to a
  * QUARANTINE floor when every rung abstains.
  *
@@ -23,13 +23,13 @@ use Schemastud\DataSchemas\Migration\Source\ForeignSource;
  *
  * Each rung self-validates against the TARGET `$id` schema (the acceptance gate)
  * and demotes when it cannot produce a conforming candidate. When the underlying
- * StrategyLadder returns null, the floor returns a {@see MigrationResult::quarantined()}
+ * Ladder returns null, the floor returns a {@see MigrationResult::quarantined()}
  * that preserves the ORIGINAL payload immutably — the source is never mutated or
  * destroyed.
  */
 class MigrationLadder
 {
-    private StrategyLadder $ladder;
+    private Ladder $ladder;
 
     /** @var array<int, MigrationRung> */
     private array $rungInstances;
@@ -37,7 +37,7 @@ class MigrationLadder
     public function __construct(MigrationRung ...$rungs)
     {
         $this->rungInstances = $rungs;
-        $this->ladder = new StrategyLadder(...$rungs);
+        $this->ladder = new Ladder(...$rungs);
     }
 
     /**
@@ -121,7 +121,7 @@ class MigrationLadder
         /** @var array<string, mixed> $candidate */
         $candidate = $result->value;
 
-        return MigrationResult::migrated($payload, $candidate, $result->strategy, $result->confidence);
+        return MigrationResult::migrated($payload, $candidate, $result->rung, $result->confidence);
     }
 
     /**

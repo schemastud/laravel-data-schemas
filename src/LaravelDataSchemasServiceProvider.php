@@ -2,11 +2,16 @@
 
 namespace Schemastud\DataSchemas;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Rushing\PipelineRegistry\PipelineRegistry;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
+use Schemastud\DataSchemas\Contracts\ServedSchemaRegistry;
+use Schemastud\DataSchemas\Http\SchemaDocumentController;
+use Schemastud\DataSchemas\Http\SchemaDoorMount;
 use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
+use Schemastud\DataSchemas\Lifecycle\ServedSchemaChain;
 use Schemastud\DataSchemas\Overlay\DataOverlayRegistry;
 use Schemastud\DataSchemas\Overlay\DataOverlayResolver;
 use Schemastud\DataSchemas\Overlay\InMemoryOverlayRegistry;
@@ -33,6 +38,24 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
             return new FilesystemSchemaRegistry($dir);
         });
 
+        // The subset of artifacts the PUBLIC schema door will serve (beam-facade ticket 82). A
+        // separate container key from SchemaRegistry above, on purpose — see the contract's docblock:
+        // the general binding is routinely a composite whose tiers are opaque, one of which resolves
+        // against the active tenant connection, so the door must never resolve it.
+        //
+        // Defaults to the host's own frozen artifact store. It is a LIST because a host's committed
+        // artifacts routinely span more than one directory (splicewire-app freezes to both
+        // `schemas/fleet` and `schemas/lifecycle`), so "the filesystem registry" has no referent.
+        $this->app->singleton(ServedSchemaRegistry::class, function ($app) {
+            $dirs = $app['config']->get('data-schemas.served_directories');
+
+            $dirs = is_array($dirs) && $dirs !== []
+                ? $dirs
+                : [$app['config']->get('data-schemas.registry_directory') ?? storage_path('app/schemas/registry')];
+
+            return ServedSchemaChain::overDirectories($dirs);
+        });
+
         // DataOverlay host-adapter seams (ADR-0089). The base binds trivial
         // defaults — an empty static resolver and an in-memory registry (a
         // singleton so registrations persist for the request). A host swaps in
@@ -55,6 +78,8 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->mountSchemaDoor();
+
         // Contribute the resources:* projection pipelines (the open,
         // foundation-tier slice) into the shared registry. Guarded so the
         // package degrades gracefully if the pipeline-registry engine is absent.
@@ -72,5 +97,36 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
                 GenerateJsonSchemaCommand::class,
             ]);
         }
+    }
+
+    /**
+     * Mount the public schema door, if this host declared an authority (beam-facade ticket 82).
+     *
+     * A declared `base_uri` string is a PROMISE to answer there — one knob, three states, so a host
+     * cannot carry a live-looking authority that serves nothing. `false` and unset mount nothing,
+     * which is what `base_uri`'s own docblock has promised since ticket 64.
+     *
+     * Mounted BARE — no `web`, no `api`, no session, no CSRF, no auth. It is a public read of
+     * committed artifacts, and a `$ref`-following client carries no cookies.
+     *
+     * NOT domain-constrained, deliberately: the `$id` is reconstructed from the incoming request, so
+     * a document can only ever be served at the URI that is its own identity. Constraining the
+     * domain would additionally foreclose the tenant-authority case ticket 64 asked to keep open.
+     *
+     * Public, and called from `boot()` rather than inlined, so the mounting rule is directly testable
+     * — and boot is deliberate: testbench applies `defineEnvironment()` after providers REGISTER, so
+     * a register-time config read could never observe a test's configuration (ticket 79's trap).
+     */
+    public function mountSchemaDoor(): void
+    {
+        $pattern = SchemaDoorMount::patternFor($this->app['config']->get('data-schemas.base_uri'));
+
+        if ($pattern === null) {
+            return;
+        }
+
+        Route::get($pattern, SchemaDocumentController::class)
+            ->where('path', '.*')
+            ->name('data-schemas.document');
     }
 }

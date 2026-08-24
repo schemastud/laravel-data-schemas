@@ -209,6 +209,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Served Directories (the public schema door)
+    |--------------------------------------------------------------------------
+    |
+    | Which of this host's committed artifacts are served at `base_uri`
+    | (beam-facade ticket 82). Read in order, first hit wins, lazily — so a
+    | directory is not created merely by being listed.
+    |
+    | A LIST, because a host's frozen artifacts routinely span more than one
+    | directory: `splicewire-app` freezes to both `schemas/fleet` and
+    | `schemas/lifecycle`, so "the filesystem registry" has no single referent.
+    | Empty or unset falls back to `registry_directory` above.
+    |
+    | This is the WHOLE of the door's gate, and the omission is the point: the
+    | tenant/runtime tier is not listable here, because tenant `$id`s are
+    | payload-supplied and nothing validates that a tenant owns the authority it
+    | claims. Serving those from this host's origin would mint exactly the
+    | unowned-authority claim ticket 64 removed. Bind
+    | Contracts\ServedSchemaRegistry to change what the door can see.
+    |
+    */
+    'served_directories' => [],
+
+    /*
+    |--------------------------------------------------------------------------
     | Validation Attribute Mapping
     |--------------------------------------------------------------------------
     |

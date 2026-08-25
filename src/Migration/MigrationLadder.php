@@ -111,7 +111,7 @@ class MigrationLadder
             diff: SchemaDiff::between($from, $to),
         );
 
-        $result = $this->ladder->resolve($request->toInput());
+        $result = $this->ladder->climb($request->toInput());
 
         if ($result === null) {
             // Quarantine floor: nothing migrated, original preserved immutably.

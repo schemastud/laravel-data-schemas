@@ -2,12 +2,12 @@
 
 namespace Schemastud\DataSchemas\Migration\Rungs;
 
+use Rushing\Popcorn\Contracts\Invocable;
 use Schemastud\DataSchemas\Attributes\MigrateWith;
 use Schemastud\DataSchemas\Keywords;
 use Schemastud\DataSchemas\Migration\Contracts\LlmMigrator;
 use Schemastud\DataSchemas\Migration\MigrationRequest;
 use Schemastud\DataSchemas\Migration\MigrationRung;
-use Rushing\Popcorn\Contracts\Invocable;
 
 /**
  * LLM-try rung — a host-bound, model-backed last resort BEFORE the quarantine

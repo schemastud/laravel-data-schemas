@@ -2,12 +2,12 @@
 
 namespace Schemastud\DataSchemas\Migration\Rungs;
 
+use Rushing\Popcorn\Contracts\Invocable;
 use Schemastud\DataSchemas\Attributes\MigrateWith;
 use Schemastud\DataSchemas\Keywords;
 use Schemastud\DataSchemas\Migration\MigrationRequest;
 use Schemastud\DataSchemas\Migration\MigrationRung;
 use Schemastud\DataSchemas\Migration\TransformRegistry;
-use Rushing\Popcorn\Contracts\Invocable;
 
 /**
  * Rung 3 — runs an author-registered custom transform for the migration. The

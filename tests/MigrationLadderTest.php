@@ -3,12 +3,12 @@
 namespace Schemastud\DataSchemas\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Rushing\Popcorn\Binding;
+use Rushing\Popcorn\Invocables\LocalInvocable;
 use Schemastud\DataSchemas\Migration\Contracts\LlmMigrator;
 use Schemastud\DataSchemas\Migration\MigrationLadder;
 use Schemastud\DataSchemas\Migration\Rungs\LlmTryRung;
 use Schemastud\DataSchemas\Migration\TransformRegistry;
-use Rushing\Popcorn\Binding;
-use Rushing\Popcorn\Invocables\LocalInvocable;
 
 class MigrationLadderTest extends TestCase
 {

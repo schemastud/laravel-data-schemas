@@ -2,8 +2,8 @@
 
 namespace Schemastud\DataSchemas\Migration\Contracts;
 
-use Schemastud\DataSchemas\Migration\Rungs\LlmTryRung;
 use Rushing\Popcorn\Contracts\Invocable;
+use Schemastud\DataSchemas\Migration\Rungs\LlmTryRung;
 
 /**
  * The LLM-try SEAM — a contract ONLY, no implementation here.

@@ -37,7 +37,7 @@ class SchemaStrategiesRegistryTest extends TestCase
 
         $this->assertNotNull($declaration);
         $this->assertSame('schemas.strategies', $declaration->root);
-        $this->assertSame(RegistryArity::RunAll, $declaration->arity);
+        $this->assertSame([RegistryArity::RunAll], $declaration->arity);
     }
 
     public function test_it_reads_the_shipped_pipeline_in_order_off_the_real_config_key(): void

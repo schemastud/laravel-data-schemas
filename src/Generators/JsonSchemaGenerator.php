@@ -23,6 +23,7 @@ use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\SchemaStrategy;
 use Schemastud\DataSchemas\Strategies\SchemaStrategyContext;
 use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
+use Schemastud\DataSchemas\Support\SchemaAuthority;
 use Spatie\LaravelData\Attributes\Computed;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
@@ -688,6 +689,13 @@ class JsonSchemaGenerator implements Generator
 
         if (! is_string($base) || trim($base) === '') {
             throw new MissingSchemaBaseUri($class->getName());
+        }
+
+        // Declared, but not an ORIGIN. `/schemas` clears the guard above and mints a relative `$id`
+        // that opis cannot parse — see {@see NonAbsoluteSchemaBaseUri} and ticket 112. Checked here,
+        // on the identity half, because this is the line that would freeze it.
+        if (! SchemaAuthority::isAbsolute($base)) {
+            throw new NonAbsoluteSchemaBaseUri($class->getName(), $base);
         }
 
         $name = $class->getName();

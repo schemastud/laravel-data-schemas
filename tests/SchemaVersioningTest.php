@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
 use Schemastud\DataSchemas\Generators\MissingSchemaBaseUri;
+use Schemastud\DataSchemas\Generators\NonAbsoluteSchemaBaseUri;
 use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
 use Schemastud\DataSchemas\Tests\Fixtures\VersionedArticleData;
 use Schemastud\DataSchemas\Tests\Fixtures\VersionedAuthorData;
@@ -47,6 +48,34 @@ class SchemaVersioningTest extends TestCase
 
         (new JsonSchemaGenerator(['schema_metadata' => ['$id' => true]]))
             ->generate(new ReflectionClass(VersionedAuthorData::class));
+    }
+
+    public function test_a_relative_base_uri_throws_rather_than_minting_a_relative_id(): void
+    {
+        // beam-facade ticket 112. `/schemas` is a FOURTH state the tri-state never declared: it
+        // clears the is_string guard, mints `/schemas/content/author/2`, and freezes a $id that
+        // names no origin — write-once, so there is no repair. All three starters shipped it.
+        $this->expectException(NonAbsoluteSchemaBaseUri::class);
+        $this->expectExceptionMessageMatches('/no origin/');
+
+        $this->generate(VersionedAuthorData::class, ['base_uri' => '/schemas']);
+    }
+
+    public function test_a_scheme_less_base_uri_throws_too(): void
+    {
+        // The rule is structural — scheme AND host — not "starts with a slash".
+        $this->expectException(NonAbsoluteSchemaBaseUri::class);
+
+        $this->generate(VersionedAuthorData::class, ['base_uri' => 'schemas.example.test/schemas']);
+    }
+
+    public function test_an_unfamiliar_absolute_authority_is_still_accepted(): void
+    {
+        // Ticket 64's tolerance is untouched: the package has no opinion about WHICH origin a host
+        // claims, only that the value is one. A path-less authority on an unheard-of domain mints.
+        $schema = $this->generate(VersionedAuthorData::class, ['base_uri' => 'https://schemas.some-other-vendor.test']);
+
+        $this->assertSame('https://schemas.some-other-vendor.test/content/author/2', $schema['$id']);
     }
 
     public function test_base_uri_false_opts_the_host_out_of_versioned_identity(): void

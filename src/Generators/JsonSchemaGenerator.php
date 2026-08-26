@@ -4,6 +4,7 @@ namespace Schemastud\DataSchemas\Generators;
 
 use BackedEnum;
 use DateTimeInterface;
+use InvalidArgumentException;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionEnum;
@@ -14,6 +15,7 @@ use Schemastud\DataSchemas\Attributes\ArrayItems;
 use Schemastud\DataSchemas\Attributes\Description;
 use Schemastud\DataSchemas\Attributes\Example;
 use Schemastud\DataSchemas\Attributes\Keyword;
+use Schemastud\DataSchemas\Attributes\MapValues;
 use Schemastud\DataSchemas\Attributes\Title;
 use Schemastud\DataSchemas\Contracts\ProvidesEnumLabel;
 use Schemastud\DataSchemas\Contracts\SchemaIdentity;
@@ -29,6 +31,9 @@ use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Lazy;
 use Spatie\LaravelData\Optional;
+use Spatie\LaravelData\Resolvers\ContextResolver;
+use Spatie\LaravelData\Support\Annotations\DataIterableAnnotation;
+use Spatie\LaravelData\Support\Annotations\DataIterableAnnotationReader;
 
 class JsonSchemaGenerator implements Generator
 {
@@ -55,6 +60,15 @@ class JsonSchemaGenerator implements Generator
      * @var array<int, SchemaStrategy>|null
      */
     protected ?array $resolvedStrategies = null;
+
+    /**
+     * Spatie's iterable-annotation reader, and its answers, memoized per generator instance.
+     *
+     * @var array<string, ?DataIterableAnnotation>
+     */
+    protected array $iterableAnnotations = [];
+
+    protected ?DataIterableAnnotationReader $iterableAnnotationReader = null;
 
     public function __construct(protected array $config = []) {}
 
@@ -272,13 +286,33 @@ class JsonSchemaGenerator implements Generator
             $schema['format'] = $info['format'];
         }
 
-        // Scalar array item type (string[], int[], …) via #[ArrayItems] — strict
-        // providers require `items` on every array. A backed-enum class as the item
-        // type inlines its values (a list of enum-valued scalars).
+        // PHP types a LIST and a MAP identically (`array`), so the declaration is the only
+        // signal that tells them apart — and without one the generator defaulted every
+        // `array<string, T>` to `type: array`, which is a lie about the wire.
+        //
+        //   #[ArrayItems]  — a list  → type: array,  items
+        //   #[MapValues]   — a map   → type: object, additionalProperties
+        //
+        // Strict providers require `items` on every array, which is what #[ArrayItems]
+        // exists for; a backed-enum class as the item/value type inlines its values.
         if ($info['arrayItemRef'] === null && $this->schemaHasType($schema, 'array')) {
             $itemsAttrs = $property->getAttributes(ArrayItems::class);
-            if (! empty($itemsAttrs)) {
+            $mapAttrs = $property->getAttributes(MapValues::class);
+
+            if (! empty($itemsAttrs) && ! empty($mapAttrs)) {
+                throw new InvalidArgumentException(sprintf(
+                    '%s::$%s declares both #[ArrayItems] and #[MapValues]; a property is a list or a map, not both.',
+                    $property->getDeclaringClass()->getName(),
+                    $property->getName(),
+                ));
+            }
+
+            if (! empty($mapAttrs)) {
+                $schema = $this->applyMapValues($schema, $mapAttrs[0]->newInstance()->type);
+            } elseif (! empty($itemsAttrs)) {
                 $schema['items'] = $this->arrayItemsSchema($itemsAttrs[0]->newInstance()->type);
+            } elseif (($mapValueType = $this->spatieMapValueType($property)) !== false) {
+                $schema = $this->applyMapValues($schema, $mapValueType);
             }
         }
 
@@ -554,6 +588,126 @@ class JsonSchemaGenerator implements Generator
      *
      * @return array<string, mixed>
      */
+    /**
+     * Ask spatie whether this property is a string-keyed MAP, and what its values are.
+     *
+     * `array<string, T>` is a docblock generic, invisible to `ReflectionProperty::getType()`,
+     * which reports a bare `array` for a list and a map alike. But spatie has already parsed it:
+     * `DataIterableAnnotationReader` fills `DataType::$iterableKeyType` / `$iterableItemType`,
+     * and it is the SAME annotation the TypeScript transformer reads to emit
+     * `Record<string, string>`. The generator was keeping a second, blind copy of the property
+     * model — the defect ticket 31 named for `isRequired()`, one axis over — and that is why one
+     * declaration produced a correct `.d.ts` and an incorrect schema from the same line of source.
+     *
+     * Returns `false` when the property is not a map (a list, or a non-Data class the generator
+     * still supports by raw reflection), `null` when it is a map with unconstrained values
+     * (`array<string, mixed>`, 49 of the estate's 55), and a type token otherwise.
+     *
+     * @return string|null|false
+     */
+    protected function spatieMapValueType(ReflectionProperty $property): mixed
+    {
+        $annotation = $this->iterableAnnotation($property);
+
+        if ($annotation === null || $annotation->keyType !== 'string') {
+            return false;
+        }
+
+        $itemType = $annotation->type;
+
+        if ($itemType === null || $itemType === 'mixed' || $itemType === 'array-key') {
+            return null;
+        }
+
+        return match ($itemType) {
+            'int' => 'integer',
+            'float' => 'number',
+            'bool' => 'boolean',
+            default => $itemType,
+        };
+    }
+
+    /**
+     * Spatie's own annotation for this property, wherever it is written.
+     *
+     * A PROMOTED property has no docblock of its own — `getDocComment()` returns false — so the
+     * `@param array<string, string> $deliveryHeaders` that declares it lives on the constructor.
+     * Spatie stitches the three sites (property, constructor, class) and so must this. Reading
+     * spatie's reader rather than re-parsing the generic is the whole point: it is the same
+     * parse the TypeScript transformer consumes, so one declaration now drives both projections.
+     */
+    protected function iterableAnnotation(ReflectionProperty $property): ?DataIterableAnnotation
+    {
+        $class = $property->getDeclaringClass();
+        $name = $property->getName();
+        $cacheKey = $class->getName().'::'.$name;
+
+        if (array_key_exists($cacheKey, $this->iterableAnnotations)) {
+            return $this->iterableAnnotations[$cacheKey];
+        }
+
+        $reader = $this->iterableAnnotationReader ??= new DataIterableAnnotationReader(new ContextResolver);
+
+        $annotation = $reader->getForProperty($property);
+
+        if ($annotation === null && ($constructor = $class->getConstructor()) !== null) {
+            $annotation = $reader->getForMethod($constructor)[$name] ?? null;
+        }
+
+        $annotation ??= $reader->getForClass($class)[$name] ?? null;
+
+        return $this->iterableAnnotations[$cacheKey] = $annotation;
+    }
+
+    /**
+     * Turn a schema the type analysis called `array` into the JSON **object** a string-keyed
+     * map really is, with its value type declared under `additionalProperties`.
+     *
+     * `additionalProperties` is not the same keyword as the strict-provider pass's
+     * `additionalProperties: false`, despite the name: that one is written on the enclosing
+     * OBJECT schema in `buildObjectSchema()`, this one on the property's own sub-schema, so
+     * the two never touch the same slot. `makeNullable()` only rewrites `type`, so a nullable
+     * map keeps its value declaration in `llm_strict` too.
+     */
+    protected function applyMapValues(array $schema, ?string $type): array
+    {
+        $current = $schema['type'] ?? null;
+
+        if (is_array($current)) {
+            $schema['type'] = array_values(array_unique(array_map(
+                fn ($t) => $t === 'array' ? 'object' : $t,
+                $current,
+            )));
+        } else {
+            $schema['type'] = 'object';
+        }
+
+        // A bare #[MapValues] declares the map WITHOUT a value type: `type: object` and no
+        // `additionalProperties`, which is everything that is knowable about an
+        // `array<string, mixed>`. Silence here means unconstrained, not undeclared.
+        if ($type !== null) {
+            $schema['additionalProperties'] = $this->mapValueSchema($type);
+        }
+
+        return $schema;
+    }
+
+    /**
+     * The value schema for a map. Same vocabulary as `arrayItemsSchema()` — scalar token or
+     * backed enum — plus a Data/object class, which becomes a `$ref` into `$defs`. #[ArrayItems]
+     * deliberately does NOT take the class arm (its docblock sends arrays of Data objects to
+     * spatie's #[DataCollectionOf], which carries hydration semantics); a map has no such peer,
+     * so the ref has to be reachable from here or `array<string, SomeData>` stays undeclarable.
+     */
+    protected function mapValueSchema(string $type): array
+    {
+        if (class_exists($type) && ! enum_exists($type)) {
+            return ['$ref' => $this->ensureDef(new ReflectionClass($type))];
+        }
+
+        return $this->arrayItemsSchema($type);
+    }
+
     protected function arrayItemsSchema(string $type): array
     {
         if (enum_exists($type) && is_subclass_of($type, BackedEnum::class)) {

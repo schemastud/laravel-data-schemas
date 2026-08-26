@@ -5,10 +5,12 @@ namespace Schemastud\DataSchemas\Tests;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
+use Schemastud\DataSchemas\Tests\Fixtures\AnnotatedMapData;
 use Schemastud\DataSchemas\Tests\Fixtures\ContentOutlineItemData;
 use Schemastud\DataSchemas\Tests\Fixtures\EnumArrayData;
 use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
 use Schemastud\DataSchemas\Tests\Fixtures\ScalarArrayData;
+use Schemastud\DataSchemas\Tests\Fixtures\StringMapData;
 use Schemastud\DataSchemas\Tests\Fixtures\TitledData;
 use Schemastud\DataSchemas\Tests\Fixtures\UploadData;
 
@@ -244,6 +246,105 @@ class JsonSchemaGeneratorTest extends TestCase
         );
         // Inlined, not a $ref — no enum def is hoisted for ArrayItems item types.
         $this->assertArrayNotHasKey('$defs', $schema);
+    }
+
+    public function test_it_projects_a_string_keyed_map_as_an_object_with_a_declared_value_type(): void
+    {
+        // api-surface-coherence 75. PHP types a list and a map identically (`array`), so the
+        // generator had no signal and published every map as `type: array` — a lie about the
+        // wire that types a generated client `unknown[]` and gets the schema rejected outright
+        // by a strict structured-output provider. `additionalProperties` is the map's keyword;
+        // `items` is the list's, and the generator had a slot for only one of them.
+        $schema = $this->generate(StringMapData::class);
+
+        $this->assertEquals('object', $schema['properties']['headers']['type']);
+        $this->assertEquals(['type' => 'string'], $schema['properties']['headers']['additionalProperties']);
+        $this->assertArrayNotHasKey('items', $schema['properties']['headers']);
+
+        // The list next to it is untouched — the two declarations do not bleed.
+        $this->assertEquals('array', $schema['properties']['tags']['type']);
+        $this->assertEquals(['type' => 'string'], $schema['properties']['tags']['items']);
+        $this->assertArrayNotHasKey('additionalProperties', $schema['properties']['tags']);
+    }
+
+    public function test_a_map_of_data_objects_refs_its_value_type(): void
+    {
+        $schema = $this->generate(StringMapData::class);
+
+        $this->assertEquals(['object', 'null'], $schema['properties']['records']['type']);
+        $this->assertEquals(
+            ['$ref' => '#/$defs/SampleData'],
+            $schema['properties']['records']['additionalProperties'],
+        );
+        $this->assertArrayHasKey('SampleData', $schema['$defs']);
+    }
+
+    public function test_a_map_of_enum_values_inlines_them_like_array_items_does(): void
+    {
+        $schema = $this->generate(StringMapData::class);
+
+        $this->assertEquals(
+            ['type' => 'string', 'enum' => ['draft', 'published']],
+            $schema['properties']['statuses']['additionalProperties'],
+        );
+    }
+
+    public function test_a_bare_map_values_declares_object_without_a_value_type(): void
+    {
+        // Measured over the estate, 49 of 55 map-shaped properties are `array<string, mixed>` —
+        // the value type genuinely is not declarable. A required type argument would have left
+        // the array/object lie standing on 89% of the population.
+        $schema = $this->generate(StringMapData::class);
+
+        $this->assertEquals('object', $schema['properties']['meta']['type']);
+        $this->assertArrayNotHasKey('additionalProperties', $schema['properties']['meta']);
+    }
+
+    public function test_the_docblock_generic_alone_projects_a_map_without_any_attribute(): void
+    {
+        // The measurement that reframed this ticket. spatie ALREADY parses `array<string, T>` —
+        // DataIterableAnnotationReader fills keyType/type — and the TypeScript transformer reads
+        // that same parse to emit `Record<string, string>`. The generator kept a second, blind
+        // copy of the property model and saw only PHP's bare `array`, so one declaration produced
+        // a correct .d.ts and a wrong schema. Asking spatie closes it for every annotated map at
+        // once; #[MapValues] is now the override, not the mechanism.
+        //
+        // These are PROMOTED properties, so the annotations are on the constructor, not the
+        // property — reading only `ReflectionProperty::getDocComment()` would find nothing.
+        $schema = $this->generate(AnnotatedMapData::class);
+
+        $this->assertEquals('object', $schema['properties']['headers']['type']);
+        $this->assertEquals(['type' => 'string'], $schema['properties']['headers']['additionalProperties']);
+
+        // array<string, mixed>: a map, values unconstrained. The map-ness is still declarable.
+        $this->assertEquals('object', $schema['properties']['meta']['type']);
+        $this->assertArrayNotHasKey('additionalProperties', $schema['properties']['meta']);
+
+        // A list is untouched — and still needs #[ArrayItems] for its `items`, which is a
+        // separate redundancy this ticket deliberately does not disturb.
+        $this->assertEquals('array', $schema['properties']['tags']['type']);
+
+        $this->assertEquals(
+            ['$ref' => '#/$defs/SampleData'],
+            $schema['properties']['records']['additionalProperties'],
+        );
+    }
+
+    public function test_the_strict_pass_and_the_map_declaration_do_not_fight_over_additional_properties(): void
+    {
+        // Same keyword NAME, different schemas: `additionalProperties: false` is written on the
+        // enclosing object in buildObjectSchema(), the map's value type on the property's own
+        // sub-schema. makeNullable() only rewrites `type`, so a nullable map keeps its value
+        // declaration through the strict pass too.
+        $schema = (new JsonSchemaGenerator)->forLlmStrict()->generate(new ReflectionClass(StringMapData::class));
+
+        $this->assertFalse($schema['additionalProperties']);
+        $this->assertEquals(['type' => 'string'], $schema['properties']['headers']['additionalProperties']);
+        $this->assertEquals(
+            ['$ref' => '#/$defs/SampleData'],
+            $schema['properties']['records']['additionalProperties'],
+        );
+        $this->assertContains('null', (array) $schema['properties']['records']['type']);
     }
 
     public function test_for_llm_strict_does_not_emit_root_metadata(): void

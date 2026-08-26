@@ -130,8 +130,30 @@ class JsonSchemaGenerator implements Generator
             if ($this->config['schema_metadata']['$schema'] ?? false) {
                 $schema = ['$schema' => $this->config['schema_version'] ?? 'https://json-schema.org/draft/2020-12/schema'] + $schema;
             }
+            // `schema_metadata.$id` is a DOCUMENT-CHROME switch, and it governs the SHORT-NAME `$id`
+            // only. A class implementing SchemaIdentity has declared that it HAS an identity, and
+            // beam-facade ticket 64 put that authority beyond the host's document-formatting
+            // preferences: an `$id` is write-once and `base_uri` is the tri-state that decides it
+            // (declared / opted out with `false` / undecided, which throws).
+            //
+            // Before ticket 105 the two halves of this file disagreed about the same question. Here a
+            // falsy `schema_metadata.$id` meant "emit no identity"; at `ensureDef()` the nested `$ref`
+            // path called `versionedId()` unconditionally and THREW without one. So a generator built
+            // without config emitted a top-level schema with no `$id` at all — silently unaddressable,
+            // which since ticket 82 means unfetchable, since `$id` is the door's key — while the same
+            // generator threw on any class that nested another versioned class.
+            //
+            // Measured 2026-08-26: no root in the estate opts out here. Two hosts and the package
+            // default declare `schema_metadata`, all three with `$id => true`, and every other root
+            // inherits the package default through `mergeConfigFrom`. So this changes no host's
+            // output; it removes an undeclared opt-out path that bypassed 64's ruling.
+            // `base_uri => false` still wins: an opted-out host mints no versioned identity, so
+            // `versionedId()` is null and the short-name `$id` stays behind the chrome switch exactly
+            // as before. Only a DECLARED authority is beyond the switch's reach.
             if ($this->config['schema_metadata']['$id'] ?? false) {
                 $schema['$id'] = $this->generateId($class);
+            } elseif (($versioned = $this->versionedId($class)) !== null) {
+                $schema['$id'] = $versioned;
             }
         }
 
@@ -183,10 +205,15 @@ class JsonSchemaGenerator implements Generator
                 continue;
             }
 
-            $schema['properties'][$property->getName()] = $this->generatePropertySchema($property);
+            // The KEY is the wire name, not the PHP name — see wireName(). Everything else
+            // about the property (its schema, its required-ness) is unchanged; only what it
+            // is called in the document moves.
+            $wireName = $this->wireName($property);
+
+            $schema['properties'][$wireName] = $this->generatePropertySchema($property);
 
             if ($this->isRequired($property)) {
-                $required[] = $property->getName();
+                $required[] = $wireName;
             }
         }
 
@@ -806,6 +833,54 @@ class JsonSchemaGenerator implements Generator
         }
 
         return true;
+    }
+
+    /**
+     * The name this property answers to ON THE WIRE, for the axis being generated.
+     *
+     * api-surface-coherence 54, and structurally the same finding as 31/70 one axis over:
+     * **spatie already computes this and the generator kept a second, worse copy of it.**
+     * `DataProperty::$inputMappedName` / `$outputMappedName` are already resolved from
+     * `#[MapInputName]`, `#[MapOutputName]`, `#[MapName]` and the host's global
+     * `name_mapping_strategy` — the exact same fact hydration and validation key on. Keying
+     * the document on `ReflectionProperty::getName()` instead published a key the server does
+     * not accept; the SDK generated from that document sent it, and the field was silently
+     * dropped at both ends (a mapped body part produces no error — the server just sees an
+     * absent optional field). Measured at the time: 15 properties across the estate whose wire
+     * key genuinely differs, plus 60 more carrying a `#[MapInputName]` whose argument merely
+     * repeats a deliberately snake_cased PHP property name — written that way ONLY to route
+     * around this method's absence.
+     *
+     * Asked of spatie, never re-derived, because re-deriving it is the defect: a global mapper
+     * is configured per host, so no attribute scan can see it and no annotation can substitute
+     * for it. Non-Data classes (the generator is not Data-only) and an unbooted container both
+     * fall back to the PHP name, which is what they already answered to.
+     *
+     * **Only `request` and `response` project.** A mapped name is an input-or-output fact and
+     * those are the only two modes that have an axis. `collapsed` — the default — is the
+     * stored/registry/migration-ladder shape, read back by key in `Migration\Rungs\*` and
+     * fingerprinted by `SchemaFingerprint`; re-keying it would rewrite declared mappings and
+     * fingerprints to answer a question they never asked. `llm_strict` describes a structure a
+     * provider emits, judged against the same stored vocabulary. Both keep the PHP name, and
+     * `MappedNameProjectionTest` pins that so a later "finish the job" sweep has to argue first.
+     */
+    protected function wireName(ReflectionProperty $property): string
+    {
+        $name = $property->getName();
+
+        if ($this->mode !== 'request' && $this->mode !== 'response') {
+            return $name;
+        }
+
+        $dataProperty = $this->spatieProperty($property);
+
+        if ($dataProperty === null) {
+            return $name;
+        }
+
+        return ($this->mode === 'request'
+            ? $dataProperty->inputMappedName
+            : $dataProperty->outputMappedName) ?? $name;
     }
 
     /**

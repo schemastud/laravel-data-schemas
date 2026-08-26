@@ -26,6 +26,7 @@
         "opis/json-schema": "^2.3",
         "rushing/laravel-pipeline-registry": "dev-main",
         "rushing/laravel-popcorn": "dev-main",
+        "rushing/php-popcorn": "dev-main",
         "schemastud/php-json-ns": "*",
         "spatie/laravel-data": "^4.0|^5.0",
         "symfony/finder": "^6.0|^7.0|^8.0"

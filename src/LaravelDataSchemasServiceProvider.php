@@ -5,6 +5,7 @@ namespace Schemastud\DataSchemas;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Rushing\PipelineRegistry\PipelineRegistry;
+use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Contracts\ServedSchemaRegistry;
@@ -79,6 +80,15 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->mountSchemaDoor();
+
+        // DECLARING and INDEXING are two acts (registry-kernel 21 D1), and ticket 25 landed only the
+        // first for this adapter. The `#[IsRegistry]` on SchemaStrategiesRegistry names
+        // `schemas.strategies`; this is where that root actually becomes routable. Described from the
+        // owner's own boot — the package that owns the config key owns the describe (08 D6/D7).
+        $this->app->make(RegistryIndex::class)->describe(
+            $this->app->make(SchemaStrategiesRegistry::class),
+            by: self::class,
+        );
 
         // Contribute the resources:* projection pipelines (the open,
         // foundation-tier slice) into the shared registry. Guarded so the

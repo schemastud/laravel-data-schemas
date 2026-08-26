@@ -3,8 +3,10 @@
 namespace Schemastud\DataSchemas\Tests;
 
 use Orchestra\Testbench\TestCase;
+use Rushing\Popcorn\Laravel\PopcornServiceProvider;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\RegistryArity;
+use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
 use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
@@ -20,7 +22,16 @@ class SchemaStrategiesRegistryTest extends TestCase
 {
     protected function getPackageProviders($app): array
     {
-        return [LaravelDataSchemasServiceProvider::class];
+        return [
+            // laravel-popcorn binds RegistryIndex as a SINGLETON. Without it the index is
+            // auto-resolvable but UNSHARED, so this package's describe() lands on a throwaway and
+            // every membership assertion below would pass against an index nobody else can see.
+            // 27 D3 found this in laravel-beam's harness and 43 found it again in tower's; this is
+            // the third instance, and the pattern is that requiring laravel-popcorn does not fix it
+            // — testbench does not auto-discover.
+            PopcornServiceProvider::class,
+            LaravelDataSchemasServiceProvider::class,
+        ];
     }
 
     public function test_it_is_bound_as_a_singleton_by_this_package(): void
@@ -38,6 +49,29 @@ class SchemaStrategiesRegistryTest extends TestCase
         $this->assertNotNull($declaration);
         $this->assertSame('schemas.strategies', $declaration->root);
         $this->assertSame([RegistryArity::RunAll], $declaration->arity);
+    }
+
+    /**
+     * DECLARING and INDEXING are two acts (21 D1). Ticket 25 landed the declaration; ticket 37 lands
+     * this — the act that actually makes `schemas.strategies` reachable through the index.
+     */
+    public function test_it_is_described_into_the_shared_index(): void
+    {
+        $this->assertSame(app(RegistryIndex::class), app(RegistryIndex::class));
+
+        $keys = array_map(strval(...), app(RegistryIndex::class)->keys());
+
+        $this->assertContains('schemas.strategies', $keys);
+    }
+
+    public function test_the_index_routes_a_strategy_key_back_to_the_registry(): void
+    {
+        $key = (string) app(SchemaStrategiesRegistry::class)->keys()[0];
+
+        $this->assertSame(
+            app(SchemaStrategiesRegistry::class),
+            app(RegistryIndex::class)->routeTo($key),
+        );
     }
 
     public function test_it_reads_the_shipped_pipeline_in_order_off_the_real_config_key(): void

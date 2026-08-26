@@ -115,6 +115,60 @@ class SchemaVersioningTest extends TestCase
         $this->assertSame($authorId, $schema['$defs'][$authorId]['$id']);
     }
 
+    // ── the two halves used to disagree (beam-facade ticket 105) ────────────────────────────────
+
+    /**
+     * A BARE generator (`new JsonSchemaGenerator`) over a class that opts into versioned identity
+     * throws at the ROOT, the same way it always did at a nested `$ref`.
+     *
+     * It used to return a schema with no `$id` at all. `schema_metadata.$id` gated the root while
+     * `ensureDef()` called `versionedId()` unconditionally, so one generator both treated "no
+     * config" as *do not emit identity* and as *identity is mandatory, fail without it*. Since
+     * ticket 82 the `$id` IS the fetch key at the schema door, so the silent branch produced
+     * artifacts that look fine and can never be served.
+     */
+    public function test_a_bare_generator_throws_on_a_versioned_class_rather_than_dropping_its_id(): void
+    {
+        $this->expectException(MissingSchemaBaseUri::class);
+
+        (new JsonSchemaGenerator)->generate(new ReflectionClass(VersionedAuthorData::class));
+    }
+
+    /**
+     * `schema_metadata.$id` is document CHROME and no longer gates a declared identity. It still
+     * gates the short-name `$id` an ordinary Data class gets, which is what it was always for.
+     */
+    public function test_a_declared_identity_is_emitted_even_with_the_metadata_switch_off(): void
+    {
+        $schema = (new JsonSchemaGenerator([
+            'base_uri' => self::BASE,
+            'schema_metadata' => ['$id' => false],
+        ]))->generate(new ReflectionClass(VersionedAuthorData::class));
+
+        $this->assertSame(self::BASE.'/content/author/2', $schema['$id']);
+
+        $plain = (new JsonSchemaGenerator([
+            'base_uri' => self::BASE,
+            'schema_metadata' => ['$id' => false],
+        ]))->generate(new ReflectionClass(SampleData::class));
+
+        $this->assertArrayNotHasKey('$id', $plain);
+    }
+
+    /**
+     * `base_uri => false` is a real, declared opt-out and still wins: the host mints no versioned
+     * identity, so the chrome switch governs the short-name `$id` exactly as before.
+     */
+    public function test_an_opted_out_host_is_unaffected(): void
+    {
+        $schema = (new JsonSchemaGenerator([
+            'base_uri' => false,
+            'schema_metadata' => ['$id' => false],
+        ]))->generate(new ReflectionClass(VersionedAuthorData::class));
+
+        $this->assertArrayNotHasKey('$id', $schema);
+    }
+
     public function test_a_non_versionable_nested_node_stays_inlined_in_a_versioned_tree(): void
     {
         // A tree mixes addressable + inlined nodes: UserData does not opt in, so

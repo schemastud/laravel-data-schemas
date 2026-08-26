@@ -23,7 +23,12 @@ class KeywordOwnershipTest extends TestCase
         // migration strategy) exercises x-migrate / x-migrate-from.
         $schemas = [
             (new JsonSchemaGenerator)->generate(new ReflectionClass(SampleData::class)),
-            (new JsonSchemaGenerator(['strategies' => [new MigrationAttributesStrategy]]))
+            // `base_uri` because MigratableProfileData is a SchemaIdentity class and a bare
+            // generator over one now throws rather than silently dropping its `$id` (ticket 105).
+            (new JsonSchemaGenerator([
+                'base_uri' => 'https://schemas.example.test',
+                'strategies' => [new MigrationAttributesStrategy],
+            ]))
                 ->generate(new ReflectionClass(MigratableProfileData::class)),
         ];
 

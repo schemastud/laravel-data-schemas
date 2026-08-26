@@ -17,6 +17,10 @@ class MigrationVocabularyTest extends TestCase
     private function generator(): JsonSchemaGenerator
     {
         return new JsonSchemaGenerator([
+            // MigratableProfileData opts into versioned identity, so it needs an authority — a
+            // bare generator over a SchemaIdentity class now throws at the ROOT as well as at a
+            // nested `$ref`, which is the whole point of beam-facade ticket 105.
+            'base_uri' => 'https://schemas.example.test',
             'strategies' => [
                 new ValidationAttributeStrategy,
                 new MigrationAttributesStrategy,

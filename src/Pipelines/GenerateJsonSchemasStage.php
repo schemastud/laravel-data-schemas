@@ -20,10 +20,23 @@ use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
  *   - `data` (class-string[], required) Data classes to generate schemas for.
  *   - `emit` (string) context-relative output directory (default `schemas`).
  *   - `mode` (string) collapsed|request|response|llm_strict (default collapsed).
+ *   - `config` (array) generator config; defaults to the host's `data-schemas` config.
+ *
+ * ## Why `config` is threaded (beam-facade ticket 105)
+ *
+ * {@see JsonSchemaGenerator} takes its config by CONSTRUCTOR ARGUMENT and never reaches the
+ * container for it — deliberately, so it can be built bare in unit tests. This stage was the
+ * estate's ONLY call site that built it bare in production code; every other path
+ * ({@see \Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand}, the Scribe strategies,
+ * `SchemaFreezeCommand`) passes real config. The consequence was silent: with no `base_uri` the
+ * stage emitted artifacts carrying no `$id`, and since ticket 82 made `$id` the schema door's fetch
+ * key, an artifact without one can never be served. The stage rides idle in the tokens pipeline, so
+ * this was a defect waiting on a consumer rather than a live outage — which is the argument for
+ * fixing it while nothing depends on its current output, not against.
  */
 class GenerateJsonSchemasStage
 {
-    /** @param  array{data?: array<int, class-string>, emit?: string, mode?: string}  $options */
+    /** @param  array{data?: array<int, class-string>, emit?: string, mode?: string, config?: array<string, mixed>}  $options */
     public function __construct(protected array $options = []) {}
 
     public function handle(PipelineContext $context, Closure $next): PipelineContext
@@ -32,7 +45,7 @@ class GenerateJsonSchemasStage
         $dir = trim($this->options['emit'] ?? 'schemas', '/');
         $mode = $this->options['mode'] ?? 'collapsed';
 
-        $generator = (new JsonSchemaGenerator)->schemaMode($mode);
+        $generator = (new JsonSchemaGenerator($this->generatorConfig()))->schemaMode($mode);
 
         foreach ($classes as $class) {
             $reflection = new ReflectionClass($class);
@@ -50,5 +63,29 @@ class GenerateJsonSchemasStage
         }
 
         return $next($context);
+    }
+
+    /**
+     * The generator config: an explicit `config` option wins, else the host's `data-schemas` config.
+     *
+     * Falls back to `[]` only when no container is available — the same posture
+     * {@see JsonSchemaGenerator::strategies()} already takes, and the only shape under which a bare
+     * generator is legitimate. A stage running inside a host always has one.
+     *
+     * @return array<string, mixed>
+     */
+    protected function generatorConfig(): array
+    {
+        $explicit = $this->options['config'] ?? null;
+
+        if (is_array($explicit)) {
+            return $explicit;
+        }
+
+        if (! function_exists('app') || ! app()->bound('config')) {
+            return [];
+        }
+
+        return (array) config('data-schemas', []);
     }
 }

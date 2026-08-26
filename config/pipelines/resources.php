@@ -23,10 +23,15 @@ return [
             'scope' => 'schemastud',
             'source' => env('RESOURCES_TYPES_SOURCE', base_path('ui/src/types/generated.d.ts')),
             'emit' => 'types/foundation.d.ts',
-            'types' => [
-                'JsonSchemaData',
-                'JsonSchemaRefData',
-            ],
+            // Emptied by registry-kernel ticket 65. These named two TypeScript types,
+            // `JsonSchemaData` and `JsonSchemaRefData`, lifted out of the app's generated
+            // `.d.ts`. Both were projections of `Splicewire\Tower\Data\JsonSchema*Data`,
+            // which that ticket DELETED along with the rest of the `/json-schemas` family —
+            // so the generator no longer emits either name and this stage was selecting for
+            // types that cannot appear. Left as an empty list rather than removing the stage:
+            // the pipeline is the seam a foundation type joins through, and the next one to
+            // be lifted belongs here.
+            'types' => [],
         ]],
         // Foundation schemas ride the same rails when a schema-driven surface
         // arrives; no foundation Data class is wired to emit yet (type-only today).

@@ -27,6 +27,7 @@ use Schemastud\DataSchemas\Strategies\SchemaStrategyContext;
 use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
 use Schemastud\DataSchemas\Support\SchemaAuthority;
 use Spatie\LaravelData\Attributes\Computed;
+use Spatie\LaravelData\Contracts\BaseData;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Lazy;
@@ -34,6 +35,8 @@ use Spatie\LaravelData\Optional;
 use Spatie\LaravelData\Resolvers\ContextResolver;
 use Spatie\LaravelData\Support\Annotations\DataIterableAnnotation;
 use Spatie\LaravelData\Support\Annotations\DataIterableAnnotationReader;
+use Spatie\LaravelData\Support\DataConfig;
+use Spatie\LaravelData\Support\DataProperty;
 
 class JsonSchemaGenerator implements Generator
 {
@@ -69,6 +72,13 @@ class JsonSchemaGenerator implements Generator
     protected array $iterableAnnotations = [];
 
     protected ?DataIterableAnnotationReader $iterableAnnotationReader = null;
+
+    /**
+     * Spatie's property models, memoized per generator instance.
+     *
+     * @var array<string, ?DataProperty>
+     */
+    protected array $spatieProperties = [];
 
     public function __construct(protected array $config = []) {}
 
@@ -761,12 +771,29 @@ class JsonSchemaGenerator implements Generator
         return false;
     }
 
+    /**
+     * Is this property listed in the schema's `required`?
+     *
+     * Two rungs, and they do NOT share a mode. `Optional` and `Lazy` are absent from `required`
+     * everywhere; a plain nullable stays required everywhere. A **default value** is a
+     * request-axis fact only: a defaulted property may be omitted on the way IN and is
+     * guaranteed on the way OUT, because spatie serializes it on every response. Response,
+     * collapsed and llm_strict therefore keep the Optional/Lazy-only rule.
+     * `buildObjectSchema()` already branches `request` for the #[Computed] skip — same seam,
+     * same reason.
+     *
+     * The has-default question is asked of SPATIE, not of raw reflection. This is
+     * api-surface-coherence 31's finding: `ReflectionProperty::hasDefaultValue()` returns
+     * **false** for a PROMOTED property whose constructor parameter has a default, so the
+     * generator's second copy of the property model reported "no default" for the single most
+     * common way to write one, and 533 of 1409 Data properties across the estate landed in
+     * `required` that should not have. Re-deriving it with
+     * `ReflectionParameter::isDefaultValueAvailable()` was 31's rejected option — the same
+     * duplication one layer deeper. Non-Data classes keep the raw-reflection path; the
+     * generator is not Data-only.
+     */
     protected function isRequired(ReflectionProperty $property): bool
     {
-        if ($property->hasDefaultValue()) {
-            return false;
-        }
-
         $info = $this->analyzeType($property);
 
         // Optional and Lazy are absent from required; plain nullable stays required.
@@ -774,7 +801,55 @@ class JsonSchemaGenerator implements Generator
             return false;
         }
 
+        if ($this->mode === 'request' && $this->hasDefaultValue($property)) {
+            return false;
+        }
+
         return true;
+    }
+
+    /**
+     * Does this property have a default value — asked of spatie for a Data class, of raw
+     * reflection otherwise. See {@see isRequired()} for why the distinction is the whole bug.
+     */
+    protected function hasDefaultValue(ReflectionProperty $property): bool
+    {
+        $dataProperty = $this->spatieProperty($property);
+
+        if ($dataProperty !== null) {
+            return $dataProperty->hasDefaultValue;
+        }
+
+        return $property->hasDefaultValue();
+    }
+
+    /**
+     * Spatie's own model of this property, when there is one and the container can build it.
+     *
+     * `DataConfig::getDataClass()` goes through `DataContainer`, so it needs a booted
+     * application. Outside one — the generator is usable standalone — there is no spatie
+     * answer and callers fall back to reflection.
+     */
+    protected function spatieProperty(ReflectionProperty $property): ?DataProperty
+    {
+        $class = $property->getDeclaringClass()->getName();
+        $cacheKey = $class.'::'.$property->getName();
+
+        if (array_key_exists($cacheKey, $this->spatieProperties)) {
+            return $this->spatieProperties[$cacheKey];
+        }
+
+        $resolved = null;
+
+        if (is_subclass_of($class, BaseData::class) && function_exists('app')) {
+            try {
+                $resolved = app(DataConfig::class)->getDataClass($class)->properties[$property->getName()] ?? null;
+            } catch (\Throwable) {
+                $resolved = null;
+            }
+        }
+
+        return $this->spatieProperties[$cacheKey] = $resolved;
     }
 
     protected function inferExample(array $schema): mixed

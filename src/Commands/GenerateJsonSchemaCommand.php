@@ -5,6 +5,7 @@ namespace Schemastud\DataSchemas\Commands;
 use Illuminate\Console\Command;
 use Schemastud\DataSchemas\Actions\DiscoverDataClassesAction;
 use Schemastud\DataSchemas\Actions\GenerateSchemasAction;
+use Schemastud\DataSchemas\Generators\ChainedGenerator;
 use Schemastud\DataSchemas\PathGenerators\PathGenerator;
 use Schemastud\DataSchemas\Writers\Writer;
 
@@ -90,12 +91,14 @@ class GenerateJsonSchemaCommand extends Command
         );
     }
 
+    /**
+     * Through {@see ChainedGenerator::fromConfig()} rather than a local `array_map`: this method and
+     * the provider's `Generator` binding were the same loop written twice, and only one of them
+     * validated its entries. The action still takes a LIST, so the chain is unwrapped here.
+     */
     protected function instantiateGenerators(array $config): array
     {
-        return array_map(
-            fn (string $class) => new $class($config),
-            $config['generators']
-        );
+        return ChainedGenerator::fromConfig($config)->generators();
     }
 
     protected function instantiatePathGenerator(array $config): PathGenerator

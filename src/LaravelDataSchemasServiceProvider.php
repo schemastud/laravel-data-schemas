@@ -9,6 +9,8 @@ use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Contracts\ServedSchemaRegistry;
+use Schemastud\DataSchemas\Generators\ChainedGenerator;
+use Schemastud\DataSchemas\Generators\Generator;
 use Schemastud\DataSchemas\Http\SchemaDocumentController;
 use Schemastud\DataSchemas\Http\SchemaDoorMount;
 use Schemastud\DataSchemas\Ids\SchemaIdParsersRegistry;
@@ -87,6 +89,24 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         // host can swap the floor grammar; NOT a singleton, because `base_uri` and the parser list
         // are read at construction and a test that sets config after boot must get the new value.
         $this->app->bind(SchemaIdResolver::class, fn () => SchemaIdResolver::fromConfig());
+
+        // "Build the generator this host configured" — a step with no home until now. A census found
+        // 41 construction sites across 13 repos and ~26 of them are a bare `new JsonSchemaGenerator`,
+        // which takes NO config: `strategies` and `id_parsers` self-heal (the generator falls back to
+        // the container for those two), but `schema_metadata`, `schema_version` and `base_uri` do not.
+        // So those sites silently emit documents with no `$schema` and no `$id` at hosts that
+        // configured both, and the OpenAPI leg describes a different document from the on-disk leg.
+        //
+        // Resolves the whole `generators` LIST as one chain rather than the first entry, because at a
+        // multi-generator host the first entry is not "the generator" — see {@see ChainedGenerator}.
+        //
+        // NOT a singleton, for the same reason recorded on the SchemaIdResolver binding directly
+        // above: config is read at CONSTRUCTION, so a host (or a test) that sets config after boot
+        // must get the new value rather than a generator built from the old one.
+        $this->app->bind(
+            Generator::class,
+            fn ($app) => ChainedGenerator::fromConfig((array) $app['config']->get('data-schemas', [])),
+        );
     }
 
     public function boot(): void

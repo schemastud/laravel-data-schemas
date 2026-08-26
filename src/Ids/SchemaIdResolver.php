@@ -27,6 +27,26 @@ use Throwable;
  * `/content-schema/x/1` when `base_uri` is unset and `false/content-schema/x/1` when it is `false`;
  * routing through here throws on the first and returns the bare ref on the second. See
  * {@see RelativeSchemaIdParser} for the reasoning on all three states.
+ *
+ * ## ⚠️ `app(SchemaIdResolver::class)` without this package's provider answers, wrongly
+ *
+ * {@see \Schemastud\DataSchemas\LaravelDataSchemasServiceProvider} binds this class to
+ * {@see fromConfig()}. Without that binding the class is still **auto-resolvable**: the container
+ * reflects the constructor, finds `string|bool|null $baseUri`, sees that it allows null, and hands
+ * back a resolver declaring NO authority — while `config('data-schemas.base_uri')` sits right there
+ * holding the correct value. It does not fail; it disagrees with config, silently, and every relative
+ * ref then throws {@see UnresolvableRelativeSchemaId} pointing at a key that is demonstrably set.
+ *
+ * Measured on beam-facade ticket 141 in `splicewire/tower`'s testbench harness: config read
+ * `https://app.splicewire.com/schemas` and `app(SchemaIdResolver::class)->baseUri()` returned null in
+ * the same breath, across 423 tests. Hosts are not exposed — the provider is auto-discovered from
+ * `extra.laravel.providers` — but **testbench does not auto-discover**, so any package harness that
+ * enumerates providers by hand must list it. That is the third instance of this exact omission in
+ * tower's harness alone (popcorn's `RegistryIndex`, spatie's `config('data')`, and now this one), and
+ * it is the worst of the three precisely because the other two fail loudly.
+ *
+ * Constructing one directly — `new SchemaIdResolver($base)` — is unaffected and is what the tests
+ * here do.
  */
 class SchemaIdResolver
 {

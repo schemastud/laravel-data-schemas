@@ -19,6 +19,7 @@ use Schemastud\DataSchemas\Attributes\MapValues;
 use Schemastud\DataSchemas\Attributes\Title;
 use Schemastud\DataSchemas\Contracts\ProvidesEnumLabel;
 use Schemastud\DataSchemas\Contracts\SchemaIdentity;
+use Schemastud\DataSchemas\Ids\SchemaIdResolver;
 use Schemastud\DataSchemas\Keywords;
 use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
@@ -1004,7 +1005,57 @@ class JsonSchemaGenerator implements Generator
 
         $name = $class->getName();
 
-        return rtrim($base, '/').'/'.trim($name::schemaName(), '/').'/'.$name::schemaVersion();
+        // The concatenation used to live here, spelled by hand. It is the SAME grammar
+        // {@see \Schemastud\DataSchemas\Ids\RelativeSchemaIdParser} declares — a relative ref
+        // completed by the declared authority — and beam-facade ticket 140 routes it through the
+        // seam so there is one implementation of it rather than two drifting beside each other
+        // (the reason {@see SchemaAuthority} exists, one tier down).
+        //
+        // Output is unchanged for every state a class reaches here in: the three guards above have
+        // already ruled out `false`, unset and non-origin, so the parser only ever sees the
+        // absolute-authority branch on this path. The guards stay HERE rather than moving into the
+        // parser because they name the CLASS whose `$id` was about to be frozen, which is the fact
+        // the author can act on; the parser's own throw names the ref, because a ref has no class.
+        return $this->idResolver($base)->resolveId(
+            trim($name::schemaName(), '/').'/'.$name::schemaVersion()
+        );
+    }
+
+    /**
+     * The ref-grammar seam, built from the authority this generator is actually minting under.
+     *
+     * The base is passed IN rather than read from config, because a generator may be constructed
+     * with an explicit config array (tests do, and so does any host generating under a non-default
+     * authority) — reading `config()` here would silently ignore it. The parser list does come from
+     * config, because that is where packages append.
+     */
+    protected function idResolver(string|bool|null $base): SchemaIdResolver
+    {
+        return new SchemaIdResolver(
+            $base,
+            $this->config['id_parsers'] ?? $this->idParserConfigFromContainer(),
+        );
+    }
+
+    /**
+     * Read the registered ref grammars from a booted container, tolerating its absence — the
+     * generator is constructed bare in unit tests.
+     *
+     * @return array<int, mixed>
+     */
+    protected function idParserConfigFromContainer(): array
+    {
+        if (! function_exists('config')) {
+            return [];
+        }
+
+        try {
+            $configured = config('data-schemas.id_parsers');
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return is_array($configured) ? array_values($configured) : [];
     }
 
     protected function getClassTitle(ReflectionClass $class): ?string

@@ -198,6 +198,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Schema Id Parsers (how a package's refs parse)
+    |--------------------------------------------------------------------------
+    |
+    | An ordered LIST of Schemastud\DataSchemas\Ids\SchemaIdParser class-strings.
+    | A package that spells its schema refs its own way appends its parser here
+    | from its own provider, instead of minting privately with an authority it
+    | had to invent (beam-facade tickets 139/140).
+    |
+    | Ships EMPTY, and that is not an oversight. This package's own grammar —
+    | an absolute $id is itself, anything else is relative to `base_uri` — is
+    | RelativeSchemaIdParser, which SchemaIdResolver falls to when no registrant
+    | claims a ref. Keeping it out of this list is what makes it unshadowable:
+    | it claims every ref, so listing it first would starve every registrant,
+    | and listing it last is where appends land, so it would be shadowed by
+    | accident.
+    |
+    | First parser to `handles()` a ref wins — a ref has exactly one grammar,
+    | so this is a PickOne registry and not a pipeline.
+    |
+    */
+    'id_parsers' => [],
+
+    /*
+    |--------------------------------------------------------------------------
     | Schema Registry Directory
     |--------------------------------------------------------------------------
     |

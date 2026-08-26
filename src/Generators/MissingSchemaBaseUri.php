@@ -3,6 +3,7 @@
 namespace Schemastud\DataSchemas\Generators;
 
 use RuntimeException;
+use Schemastud\DataSchemas\Ids\UndeclaredSchemaAuthority;
 
 /**
  * Thrown when a class opting into versioned identity is generated at a host that
@@ -20,8 +21,12 @@ use RuntimeException;
  * Set `base_uri` to `false` to opt this host out of versioned identity entirely:
  * a `SchemaIdentity` class then keeps the short-name `$id` it would have had
  * without the interface, and no schema-serving route is mounted.
+ *
+ * Carries {@see UndeclaredSchemaAuthority} so this ruling and its ref-side twin
+ * ({@see \Schemastud\DataSchemas\Ids\UnresolvableRelativeSchemaId}, beam-facade
+ * ticket 140) are catchable as one rule rather than two.
  */
-class MissingSchemaBaseUri extends RuntimeException
+class MissingSchemaBaseUri extends RuntimeException implements UndeclaredSchemaAuthority
 {
     public function __construct(public string $class)
     {

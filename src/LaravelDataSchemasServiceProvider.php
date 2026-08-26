@@ -11,6 +11,8 @@ use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Contracts\ServedSchemaRegistry;
 use Schemastud\DataSchemas\Http\SchemaDocumentController;
 use Schemastud\DataSchemas\Http\SchemaDoorMount;
+use Schemastud\DataSchemas\Ids\SchemaIdParsersRegistry;
+use Schemastud\DataSchemas\Ids\SchemaIdResolver;
 use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
 use Schemastud\DataSchemas\Lifecycle\ServedSchemaChain;
 use Schemastud\DataSchemas\Overlay\DataOverlayRegistry;
@@ -75,6 +77,16 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         // ticket 08 D6/D7: a registry describes itself, and nobody describes on another's behalf).
         // The array stays the storage; every existing consumer still reads the plain list.
         $this->app->singleton(SchemaStrategiesRegistry::class);
+
+        // The ref-grammar seam (beam-facade ticket 140). Same adapter shape as the strategies
+        // registry above and for the same reason — the storage is `config('data-schemas.id_parsers')`,
+        // a list a package appends its own parser to from its own provider.
+        $this->app->singleton(SchemaIdParsersRegistry::class);
+
+        // The ONE config-aware step in schema identity. Bound rather than newed at call sites so a
+        // host can swap the floor grammar; NOT a singleton, because `base_uri` and the parser list
+        // are read at construction and a test that sets config after boot must get the new value.
+        $this->app->bind(SchemaIdResolver::class, fn () => SchemaIdResolver::fromConfig());
     }
 
     public function boot(): void
@@ -87,6 +99,11 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         // owner's own boot — the package that owns the config key owns the describe (08 D6/D7).
         $this->app->make(RegistryIndex::class)->describe(
             $this->app->make(SchemaStrategiesRegistry::class),
+            by: self::class,
+        );
+
+        $this->app->make(RegistryIndex::class)->describe(
+            $this->app->make(SchemaIdParsersRegistry::class),
             by: self::class,
         );
 

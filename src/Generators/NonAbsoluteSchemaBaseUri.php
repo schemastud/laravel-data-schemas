@@ -3,6 +3,7 @@
 namespace Schemastud\DataSchemas\Generators;
 
 use RuntimeException;
+use Schemastud\DataSchemas\Ids\UndeclaredSchemaAuthority;
 
 /**
  * Thrown when `data-schemas.base_uri` is declared but does not name an ORIGIN.
@@ -23,8 +24,14 @@ use RuntimeException;
  * This does NOT narrow ticket 64's tolerance. The package still has no opinion about WHICH origin a
  * host claims — a domain it has never heard of is fine. It only insists the value IS one: a scheme
  * and a host. `false` remains the way to opt out of versioned identity entirely.
+ *
+ * Carries {@see UndeclaredSchemaAuthority} so this ruling and its ref-side twin
+ * ({@see \Schemastud\DataSchemas\Ids\UnresolvableRelativeSchemaId}, beam-facade ticket 140) are
+ * catchable as one rule rather than two. Ticket 140 does NOT reverse this guard — a *deliberately*
+ * relative ref carries a declared absolute authority to resolve against, and one that does not
+ * lands back here by a different route.
  */
-class NonAbsoluteSchemaBaseUri extends RuntimeException
+class NonAbsoluteSchemaBaseUri extends RuntimeException implements UndeclaredSchemaAuthority
 {
     public function __construct(public string $class, public string $baseUri)
     {

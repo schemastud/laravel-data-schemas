@@ -65,18 +65,39 @@ class DiscoverDataClassesTest extends TestCase
         $this->assertNotContains(NotAData::class, $this->discover());
     }
 
-    public function test_it_still_honours_the_configured_namespace_fnmatch_filter(): void
+    public function test_it_honours_a_separator_free_namespace_filter(): void
     {
-        // Patterns are written WITHOUT namespace separators on purpose: `fnmatch()` treats `\` as an
-        // escape character, so `App\Data\*` matches nothing at all — a pre-existing quirk of
-        // DataObjectCollector's filter, deliberately left as-is here (this change touches discovery,
-        // not collection). Pinned so the next reader does not mistake it for a regression.
         $matching = $this->discover(['Schemastud*']);
 
         $this->assertContains(ProseDocblockData::class, $matching);
         $this->assertContains(ClassFetchData::class, $matching);
 
         $this->assertSame([], $this->discover(['App*']));
+    }
+
+    /**
+     * The regression this class exists to hold down: the filter used `fnmatch()`, which treats `\`
+     * as an escape character, so a pattern written the way anyone would actually write one —
+     * with namespace separators — matched NOTHING and the filter silently excluded everything.
+     */
+    public function test_a_namespace_pattern_carrying_separators_actually_matches(): void
+    {
+        $matching = $this->discover(['Schemastud\\DataSchemas\\Tests\\Fixtures\\Discovery\\*']);
+
+        $this->assertContains(ProseDocblockData::class, $matching);
+        $this->assertContains(ClassFetchData::class, $matching);
+    }
+
+    public function test_a_namespace_pattern_carrying_separators_still_excludes_non_matches(): void
+    {
+        $this->assertSame([], $this->discover(['App\\Data\\*']));
+    }
+
+    public function test_any_one_pattern_in_the_list_admits_the_class(): void
+    {
+        $matching = $this->discover(['App\\Data\\*', 'Schemastud\\DataSchemas\\Tests\\*']);
+
+        $this->assertContains(ProseDocblockData::class, $matching);
     }
 
     public function test_a_missing_path_is_skipped_rather_than_raised(): void

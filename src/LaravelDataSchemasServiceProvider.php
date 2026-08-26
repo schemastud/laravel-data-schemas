@@ -119,9 +119,20 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
      * Mounted BARE — no `web`, no `api`, no session, no CSRF, no auth. It is a public read of
      * committed artifacts, and a `$ref`-following client carries no cookies.
      *
-     * NOT domain-constrained, deliberately: the `$id` is reconstructed from the incoming request, so
-     * a document can only ever be served at the URI that is its own identity. Constraining the
-     * domain would additionally foreclose the tenant-authority case ticket 64 asked to keep open.
+     * NOT domain-constrained for a PATH-SHAPED authority, deliberately: the `$id` is reconstructed
+     * from the incoming request, so a document can only ever be served at the URI that is its own
+     * identity. Constraining the domain would additionally foreclose the tenant-authority case
+     * ticket 64 asked to keep open.
+     *
+     * A PATH-LESS authority is the exception, and ticket 111 measured why: its pattern is the root
+     * catch-all `{path}`, which Laravel's domain+method+URI keying lets any sibling bare `GET {path}`
+     * replace outright, silently. The host is then the only discriminator there is, so the door is
+     * constrained to it. See {@see SchemaDoorMount} for the whole argument.
+     *
+     * The domain is applied through the registrar BEFORE the route is added, never with `->domain()`
+     * afterwards: `RouteCollection::addToCollections()` reads the domain at add time to choose which
+     * bucket to index into, so a domain set after the fact would leave the route filed as undomained
+     * and reintroduce exactly the collision this is here to remove.
      *
      * Public, and called from `boot()` rather than inlined, so the mounting rule is directly testable
      * — and boot is deliberate: testbench applies `defineEnvironment()` after providers REGISTER, so
@@ -129,14 +140,20 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
      */
     public function mountSchemaDoor(): void
     {
-        $pattern = SchemaDoorMount::patternFor($this->app['config']->get('data-schemas.base_uri'));
+        $baseUri = $this->app['config']->get('data-schemas.base_uri');
+
+        $pattern = SchemaDoorMount::patternFor($baseUri);
 
         if ($pattern === null) {
             return;
         }
 
-        Route::get($pattern, SchemaDocumentController::class)
-            ->where('path', '.*')
-            ->name('data-schemas.document');
+        $domain = SchemaDoorMount::domainFor($baseUri);
+
+        $route = $domain === null
+            ? Route::get($pattern, SchemaDocumentController::class)
+            : Route::domain($domain)->get($pattern, SchemaDocumentController::class);
+
+        $route->where('path', '.*')->name('data-schemas.document');
     }
 }

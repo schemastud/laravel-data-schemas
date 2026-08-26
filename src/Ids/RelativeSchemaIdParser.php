@@ -74,6 +74,29 @@ use Schemastud\JsonNs\NamespaceUri;
  * Including `false` and unset. An absolute ref needs no authority, so refusing it would make the
  * host's own state a reason to reject an id that is already complete — and it is what lets a caller
  * pass a mix of already-minted `$id`s and relative refs through one door.
+ *
+ * ## A relative ref is assumed HOST-AUTHORED, and it has to be
+ *
+ * A relative ref carries no provenance. Nothing in `content-schema/x/1` says who wrote it, so this
+ * class cannot distinguish one authored here from one that arrived from somewhere else — it resolves
+ * every non-absolute ref against THIS host's authority.
+ *
+ * That is the correct reading rather than a guess, and the reason is structural: *relative means
+ * relative to the reader* (RFC 3986, and JSON Schema's own `$ref` resolution). A ref that needs to
+ * name a foreign authority **must** be absolute, which is why the branch above passes absolute refs
+ * through in every tri-state — a mix of already-minted foreign `$id`s and local relative refs is
+ * exactly what one door has to carry. So the split is: absolute is self-identifying and possibly
+ * foreign; relative is necessarily local, because a relative string is structurally incapable of
+ * naming another authority.
+ *
+ * ⚠️ **The one case this cannot police, and it is the caller's to get right.** Refs lifted OUT of a
+ * foreign document resolve against *that document's* base, not ours. Hand this class the relative
+ * `$ref`s from a schema fetched elsewhere and it will silently mint them under this host's authority
+ * — an `$id` that is write-once and wrong. **Absolutize at the boundary**, where the document's own
+ * base is still known, before anything reaches the resolver. Same shape as the honest-not-correct
+ * answer `Splicewire\Beam\Schema\SchemaId::name()` documents one tier down for a stem that was not
+ * minted under the base it is being read with; a value object and a parser both lose the fact at the
+ * same place, which is where the document was read.
  */
 class RelativeSchemaIdParser implements SchemaIdParser
 {

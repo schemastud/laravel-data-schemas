@@ -2,33 +2,10 @@
 
 namespace Schemastud\DataSchemas\Writers;
 
-use Illuminate\Support\Facades\File;
-use Schemastud\DataSchemas\Support\SchemaCollection;
-
-class JsonSchemaWriter implements Writer
-{
-    public function __construct(protected array $config) {}
-
-    public function write(SchemaCollection $collection): void
-    {
-        foreach ($collection as $generatedSchema) {
-            $this->writeSchemaFile($generatedSchema->outputPath, $generatedSchema->schema);
-        }
-    }
-
-    protected function writeSchemaFile(string $path, array $schema): void
-    {
-        // Ensure directory exists
-        $directory = dirname($path);
-        if (! File::exists($directory)) {
-            File::makeDirectory($directory, 0755, true);
-        }
-
-        // Format JSON if configured
-        $json = $this->config['format_output']
-            ? json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-            : json_encode($schema, JSON_UNESCAPED_SLASHES);
-
-        File::put($path, $json);
-    }
-}
+/**
+ * @deprecated Use {@see SchemaFileWriter}. Kept because `writer` is a PUBLISHED config key:
+ * two hosts in the estate (`~/Herd/fable-legacy`, `~/Herd/schemastud`) name this class in
+ * their own `config/data-schemas.php`, and a published config is not something this package
+ * can edit. Removing the class turns their `schemas:generate` into a bare "class not found".
+ */
+class JsonSchemaWriter extends SchemaFileWriter {}

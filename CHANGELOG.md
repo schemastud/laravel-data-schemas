@@ -4,6 +4,30 @@ All notable changes to `schemastud/laravel-data-schemas` are documented here.
 
 ## Unreleased
 
+### Changed
+- **The schema collection family splits on provenance, and the writer moved onto a disk.**
+  `GeneratedSchema` no longer carries an `outputPath` — most projections of this generator have no
+  path (the in-memory registry, `ServedSchemaChain`, the OpenAPI leg), so a destination on the base
+  type was a disk flavour every caller had to ignore. `WrittenSchema` adds it, `FileSchemaCollection`
+  holds those, and `GenerateSchemasAction` returns one. `SchemaCollection` gains a deliberately small
+  interrogation surface — `fingerprints()`, the **pure** `diffAgainst(array $onDisk)` (the shape
+  beam's `schema.projection-drift` audit consumes), `registerInto(SchemaRegistry)` — plus
+  `pathCollisions()` on the file collection, which reports the last-write-wins overwrite
+  `path_structure: 'flat'` has always been able to produce in silence. The collection is **not**
+  path-keyed, because a path-keyed collection drops the very duplicate `pathCollisions()` exists to
+  find. Both collections annotate their generics and mirror Eloquent's `map()`/`mapWithKeys()`
+  downgrade so the annotation stays true. Filesystem reads live in one class, `SchemaFileReader`.
+  `addSchema()` is **gone** — it was `push()` with a type hint.
+- **`Writers\JsonSchemaWriter` → `Writers\SchemaFileWriter`, writing through `Storage`.** The
+  contract keeps the idea-name; the implementation takes the strategy-name, as with
+  `SchemaRegistry` ← `FilesystemSchemaRegistry`. The package now defines a **`data-schemas` disk**
+  (a `local` driver rooted at `output_directory`, defined only if the host has not), so
+  `Storage::fake('data-schemas')` is the testing story — the old absolute-path `File::put` was
+  unfakeable, which is why this whole path had no tests. `JsonSchemaWriter` survives as a
+  deprecated subclass: `writer` is a published config key and hosts carry the old name.
+  `Writer::write()` now takes a `FileSchemaCollection`; a host implementation typed on
+  `SchemaCollection` still satisfies it (parameter widening is legal).
+
 ### Added
 - **Relative schema ids, behind a `SchemaIdParser` strategy seam** (`src/Ids/`, beam-facade 140).
   `content-schema/food-safety/kitchen-log/1` is now a legal ref that resolves against the host's

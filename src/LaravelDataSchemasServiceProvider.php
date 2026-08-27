@@ -24,6 +24,7 @@ use Schemastud\DataSchemas\Overlay\Lens\LensRegistry;
 use Schemastud\DataSchemas\Overlay\Lens\ReversibleResolver;
 use Schemastud\DataSchemas\Overlay\StaticOverlayResolver;
 use Schemastud\DataSchemas\Strategies\SchemaStrategiesRegistry;
+use Schemastud\DataSchemas\Support\SchemaDisk;
 
 class LaravelDataSchemasServiceProvider extends ServiceProvider
 {
@@ -33,6 +34,8 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
             __DIR__.'/../config/data-schemas.php',
             'data-schemas'
         );
+
+        $this->defineSchemaDisk();
 
         // The immutable, $id-keyed registry of frozen schema artifacts. Bound to
         // the filesystem implementation by default; swap via the container.
@@ -107,6 +110,36 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
             Generator::class,
             fn ($app) => ChainedGenerator::fromConfig((array) $app['config']->get('data-schemas', [])),
         );
+    }
+
+    /**
+     * Define the disk schema files are written to and read from.
+     *
+     * `output_directory` defaults to `resource_path('schemas')`, which sits outside every
+     * stock disk root — so "just use `local`" was never available, and that is why the writer
+     * had been reaching past `Storage` to absolute-path `File::put` calls nothing could fake.
+     *
+     * DEFINE, never overwrite: a host that has already declared a disk under this name owns it,
+     * and a package that stamps over a host's filesystem configuration is the same class of
+     * defect as one that writes into `local`. Reads `output_directory` at register time, which
+     * is also when the root is fixed — `schemas:generate --output=` moves both together (see
+     * {@see \Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand::buildConfig()}), because
+     * a root that disagrees with the configured directory writes to the wrong place silently.
+     */
+    protected function defineSchemaDisk(): void
+    {
+        $config = $this->app['config'];
+        $name = $config->get('data-schemas.disk') ?: SchemaDisk::DEFAULT;
+
+        if ($config->has('filesystems.disks.'.$name)) {
+            return;
+        }
+
+        $config->set('filesystems.disks.'.$name, [
+            'driver' => 'local',
+            'root' => $config->get('data-schemas.output_directory') ?? resource_path('schemas'),
+            'throw' => false,
+        ]);
     }
 
     public function boot(): void

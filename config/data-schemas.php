@@ -6,7 +6,7 @@ use Schemastud\DataSchemas\PathGenerators\DefaultPathGenerator;
 use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
-use Schemastud\DataSchemas\Writers\JsonSchemaWriter;
+use Schemastud\DataSchemas\Writers\SchemaFileWriter;
 
 return [
     /*
@@ -124,10 +124,35 @@ return [
     | Writer
     |--------------------------------------------------------------------------
     |
-    | Handles persistence of JSON Schema files to disk.
+    | Handles persistence of JSON Schema files to the schema disk.
+    |
+    | Renamed from `JsonSchemaWriter` (the payload every Writer shares, so it
+    | distinguished nothing) to name its STRATEGY, matching SchemaRegistry ←
+    | FilesystemSchemaRegistry and PathGenerator ← DefaultPathGenerator. The old
+    | class survives as a deprecated subclass, because this key is PUBLISHED and
+    | hosts already carry the old name in their own config file.
     |
     */
-    'writer' => JsonSchemaWriter::class,
+    'writer' => SchemaFileWriter::class,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Schema Disk
+    |--------------------------------------------------------------------------
+    |
+    | The filesystem disk schema files are written to and read back from. The
+    | provider DEFINES this disk (a `local` driver rooted at `output_directory`)
+    | unless the host has already defined one under the same name, so
+    | `Storage::fake('data-schemas')` is the testing story and an S3-backed
+    | schema tree is a config change rather than a rewrite.
+    |
+    | Named explicitly rather than reusing `local` or `public`: those are a
+    | HOST's disks, and a package writing into them is squatting. Note that
+    | `output_directory` defaults OUTSIDE any stock disk root
+    | (`resource_path('schemas')`), which is why this needs its own disk at all.
+    |
+    */
+    'disk' => 'data-schemas',
 
     /*
     |--------------------------------------------------------------------------

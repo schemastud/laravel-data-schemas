@@ -3,10 +3,13 @@
 namespace Schemastud\DataSchemas\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 use Schemastud\DataSchemas\Actions\DiscoverDataClassesAction;
 use Schemastud\DataSchemas\Actions\GenerateSchemasAction;
 use Schemastud\DataSchemas\Generators\ChainedGenerator;
 use Schemastud\DataSchemas\PathGenerators\PathGenerator;
+use Schemastud\DataSchemas\Support\SchemaDisk;
+use Schemastud\DataSchemas\Support\WrittenSchema;
 use Schemastud\DataSchemas\Writers\Writer;
 
 class GenerateJsonSchemaCommand extends Command
@@ -50,6 +53,15 @@ class GenerateJsonSchemaCommand extends Command
         $generateAction = new GenerateSchemasAction($generators, $pathGenerator);
         $collection = $generateAction->execute($classes);
 
+        // A path claimed by two classes is a last-write-wins overwrite, and it used to happen
+        // in silence — `path_structure: 'flat'` keys on the short name, so two same-named
+        // classes in different namespaces produce one file. Reported BEFORE the write, so the
+        // operator sees it even when the run is otherwise unremarkable. Advisory, not fatal:
+        // whether two classes may share a name is a fact about the HOST's namespaces.
+        foreach ($collection->pathCollisions() as $path => $colliding) {
+            $this->warn('Path collision — '.implode(' and ', $colliding).' both write to '.$path);
+        }
+
         // Write schemas to disk
         $writer = $this->instantiateWriter($config);
         $writer->write($collection);
@@ -58,11 +70,11 @@ class GenerateJsonSchemaCommand extends Command
         $this->newLine();
         $this->table(
             ['Class', 'Output Path', 'Properties'],
-            $collection->map(fn ($schema) => [
+            $collection->map(fn (WrittenSchema $schema) => [
                 $schema->className,
                 str_replace(base_path().'/', '', $schema->outputPath),
                 $schema->getPropertyCount(),
-            ])
+            ])->all()
         );
 
         $this->newLine();
@@ -71,13 +83,23 @@ class GenerateJsonSchemaCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * The `--output` override moves the DISK ROOT with the directory, and forgets the
+     * already-resolved disk so the next `Storage::disk()` picks the new root up. The disk is
+     * defined at register time from `output_directory`; changing only one of the two would
+     * leave the writer emitting disk-relative paths derived from one root into a disk rooted
+     * at another — files in the wrong place, and no error anywhere.
+     */
     protected function buildConfig(): array
     {
         $config = config('data-schemas');
 
-        // Override output directory if specified
         if ($outputDir = $this->option('output')) {
             $config['output_directory'] = $outputDir;
+
+            $disk = SchemaDisk::name($config);
+            config(['filesystems.disks.'.$disk.'.root' => $outputDir]);
+            Storage::forgetDisk($disk);
         }
 
         return $config;

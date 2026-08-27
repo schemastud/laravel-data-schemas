@@ -125,6 +125,43 @@ class SchemaProjectionRegistryTest extends TestCase
     }
 
     /**
+     * WHICH source wins the slot, now that the command reads this union: the FIRST to name a class,
+     * and registration order is the tie-break. Pinned on the ORDER of the union rather than on object
+     * identity, because that is the user-visible consequence — it is the order `schemas:generate`
+     * generates and reports in.
+     *
+     * This does NOT contradict `onDuplicate: Supersede`. The two rules are about different things:
+     * Supersede governs one KEY re-registered (a host replacing the shipped `path-scan` with a
+     * narrowed one — last registration wins the KEY), first-wins governs one CLASS named by two
+     * DIFFERENT keys (no key is being replaced; the class simply already has a slot).
+     */
+    public function test_the_first_source_to_name_a_class_keeps_its_slot_in_the_union(): void
+    {
+        config()->set('data-schemas.auto_discover_types', []);
+
+        $this->registry()->register('a', new StubSchemaSource([UserData::class, Fixtures\SampleData::class]), by: 'test');
+        $this->registry()->register('b', new StubSchemaSource([Fixtures\SampleData::class, Fixtures\TitledData::class]), by: 'test');
+
+        $this->assertSame(
+            [UserData::class, Fixtures\SampleData::class, Fixtures\TitledData::class],
+            array_map(fn (ReflectionClass $c) => $c->getName(), $this->registry()->classes()),
+        );
+    }
+
+    /** Supersede's half of that pair: re-registering a KEY replaces the source at it. */
+    public function test_re_registering_a_key_supersedes_the_source_at_it(): void
+    {
+        config()->set('data-schemas.auto_discover_types', []);
+
+        $this->registry()->register('path-scan', new StubSchemaSource([UserData::class]), by: 'test');
+
+        $this->assertSame(
+            [UserData::class],
+            array_map(fn (ReflectionClass $c) => $c->getName(), $this->registry()->classes()),
+        );
+    }
+
+    /**
      * The boot-order trap this registry is shaped to avoid, stated as a test: a source registered
      * before the thing it enumerates is populated must still contribute, because it is asked at READ
      * time and not at registration time.
@@ -148,6 +185,18 @@ class SchemaProjectionRegistryTest extends TestCase
     public function test_the_nullable_half_of_the_accessor_pair_exists(): void
     {
         $this->assertNull($this->registry()->trySource('no-such-source'));
+    }
+
+    /**
+     * The composite is a {@see \Schemastud\DataSchemas\Sources\SchemaSource} itself — so the command can
+     * take one type whether it is handed the whole registry or an ad-hoc override — which makes exactly
+     * one nonsense entry newly typeable, and `classes()` would recurse on it forever.
+     */
+    public function test_the_registry_refuses_to_be_registered_inside_itself(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->registry()->register('self', $this->registry(), by: 'test');
     }
 
     public function test_an_entry_that_is_not_a_source_is_refused_loudly(): void

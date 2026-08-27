@@ -8,6 +8,10 @@ use Schemastud\DataSchemas\Actions\DiscoverDataClassesAction;
 use Schemastud\DataSchemas\Actions\GenerateSchemasAction;
 use Schemastud\DataSchemas\Generators\ChainedGenerator;
 use Schemastud\DataSchemas\PathGenerators\PathGenerator;
+use Schemastud\DataSchemas\Sources\ExplicitClassSource;
+use Schemastud\DataSchemas\Sources\PathScanSource;
+use Schemastud\DataSchemas\Sources\SchemaProjectionRegistry;
+use Schemastud\DataSchemas\Sources\SchemaSource;
 use Schemastud\DataSchemas\Support\SchemaDisk;
 use Schemastud\DataSchemas\Support\WrittenSchema;
 use Schemastud\DataSchemas\Writers\Writer;
@@ -28,15 +32,9 @@ class GenerateJsonSchemaCommand extends Command
         // Build configuration
         $config = $this->buildConfig();
 
-        // Instantiate collectors
-        $collectors = $this->instantiateCollectors($config);
-
-        // Discover Data classes
-        $discoverAction = new DiscoverDataClassesAction($config, $collectors);
-        $classes = $discoverAction->execute(
-            path: $this->option('path'),
-            className: $this->option('class')
-        );
+        // Discover Data classes — through the registry, so every source this host has registered is
+        // enumerated, not just the path scan this command used to hard-code.
+        $classes = $this->source($config)->classes();
 
         if (empty($classes)) {
             $this->warn('No Data classes found to generate schemas for.');
@@ -105,12 +103,34 @@ class GenerateJsonSchemaCommand extends Command
         return $config;
     }
 
-    protected function instantiateCollectors(array $config): array
+    /**
+     * WHERE this run's classes come from.
+     *
+     * Ordinarily the whole {@see SchemaProjectionRegistry} — the union of every registered source,
+     * deduped by class name with the first source to name a class keeping the slot. That is what makes
+     * a contributed universe (beam's particle registry, an explicit manifest, a table of tenant shapes)
+     * generable without this command knowing it exists.
+     *
+     * An explicit `--class` or `--path` REPLACES that registry with an ad-hoc source rather than
+     * filtering its union. The reasoning, and what it means when a host has registered a second source,
+     * is written out on {@see ExplicitClassSource} — the short version is that filtering would quietly
+     * narrow `--class` from "generate this class" to "generate this class if something already
+     * discovers it", which is the case the flag exists for.
+     *
+     * `--class` beats `--path` when both are given, which is the precedence
+     * {@see DiscoverDataClassesAction::execute()} already had.
+     */
+    protected function source(array $config): SchemaSource
     {
-        return array_map(
-            fn (string $class) => new $class($config),
-            $config['collectors']
-        );
+        if ($className = $this->option('class')) {
+            return new ExplicitClassSource($className, $config);
+        }
+
+        if ($path = $this->option('path')) {
+            return new PathScanSource(['auto_discover_types' => [$path]] + $config);
+        }
+
+        return app(SchemaProjectionRegistry::class);
     }
 
     /**

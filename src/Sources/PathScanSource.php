@@ -14,6 +14,10 @@ use Schemastud\DataSchemas\Collectors\Collector;
  * `schemas:generate` has always enumerated is an ENTRY in {@see SchemaProjectionRegistry} rather than
  * an assumption inside a command, which is what makes a second universe contributable beside it.
  *
+ * The `$config` constructor argument is also what lets `schemas:generate --path=` build one of these
+ * AD HOC, over just that path, and use it INSTEAD of the registry — see {@see ExplicitClassSource} for
+ * why an operator override replaces the registry rather than filtering its union.
+ *
  * Config is read at `classes()` time, not at construction, for the reason the registry's whole shape
  * turns on: this object is registered in a provider's `boot()`, and a host (or a test) that configures
  * `auto_discover_types` afterwards must be seen. It is the same posture the `Generator` and
@@ -33,18 +37,6 @@ class PathScanSource implements SchemaSource
 
         $config['auto_discover_types'] ??= [];
 
-        return (new DiscoverDataClassesAction($config, $this->collectors($config)))->execute();
-    }
-
-    /**
-     * @param  array<string, mixed>  $config
-     * @return list<Collector>
-     */
-    protected function collectors(array $config): array
-    {
-        return array_values(array_map(
-            fn (string $class) => new $class($config),
-            (array) ($config['collectors'] ?? []),
-        ));
+        return (new DiscoverDataClassesAction($config, Collector::fromConfig($config)))->execute();
     }
 }

@@ -59,8 +59,11 @@ class DiscoverDataClassesAction
     }
 
     /**
-     * Resolved lazily so the action stays constructible with two arguments, as its one caller
-     * ({@see \Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand}) builds it.
+     * Resolved lazily so the action stays constructible with two arguments, as its callers — the
+     * {@see \Schemastud\DataSchemas\Sources\SchemaSource} implementations that wrap it — build it.
+     * `schemas:generate` no longer news one directly: it asks {@see
+     * \Schemastud\DataSchemas\Sources\SchemaProjectionRegistry} instead, so a scan is one registered
+     * source among however many the host has rather than the command's only universe.
      */
     protected function popcorn(): PopcornManager
     {

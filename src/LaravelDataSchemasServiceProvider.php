@@ -12,6 +12,7 @@ use Schemastud\DataSchemas\Commands\SchemaFreezeCommand;
 use Schemastud\DataSchemas\Commands\SchemaFreezeVersionCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Contracts\ServedSchemaRegistry;
+use Schemastud\DataSchemas\Fixtures\FixtureIndex;
 use Schemastud\DataSchemas\Generators\ChainedGenerator;
 use Schemastud\DataSchemas\Generators\Generator;
 use Schemastud\DataSchemas\Http\SchemaDocumentController;
@@ -101,6 +102,13 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         // cannot freeze config the way a singleton generator would.
         $this->app->singleton(SchemaProjectionRegistry::class);
 
+        // Named fixture states per declared shape (`schemas.fixtures`). A SINGLETON for the same
+        // reason as the projection registry above and NOT for the config-reading reason: it holds
+        // registrations, and a fresh instance per resolve would silently discard whatever a package
+        // — or a host overriding one — contributed from its own provider. That discard would be
+        // invisible: the factory would still build, from defaults, with the state never applied.
+        $this->app->singleton(FixtureIndex::class);
+
         // The ONE config-aware step in schema identity. Bound rather than newed at call sites so a
         // host can swap the floor grammar; NOT a singleton, because `base_uri` and the parser list
         // are read at construction and a test that sets config after boot must get the new value.
@@ -187,6 +195,16 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         }
 
         $this->app->make(RegistryIndex::class)->describe($projection, by: self::class);
+
+        // `schemas.fixtures` — described from the owner's own boot, like the three above (08 D6/D7).
+        // Without this the registry is bound and usable but INVISIBLE to `popcorn:registries`, which
+        // is the state `schemas.overlays` is in today: a registry nothing can enumerate is one nobody
+        // can discover a state was registered into. Resolving the singleton is not enough on its own —
+        // `BasicRegistry::for()` reads the declaration, it does not describe into the index.
+        $this->app->make(RegistryIndex::class)->describe(
+            $this->app->make(FixtureIndex::class),
+            by: self::class,
+        );
 
         // Contribute the resources:* projection pipelines (the open,
         // foundation-tier slice) into the shared registry. Guarded so the

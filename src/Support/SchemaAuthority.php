@@ -52,6 +52,40 @@ class SchemaAuthority
     }
 
     /**
+     * The ORIGIN of an absolute URI — `scheme://host[:port]` — or null when it names none.
+     *
+     * `hostOf()` deliberately drops the scheme and the port, which is right for deciding what domain
+     * a route is constrained to and wrong for deciding whether two URIs come from the same place:
+     * `http://a.test` and `https://a.test:8443` share a host and are different origins. Beam-facade
+     * ticket 104 needs the second question, so it gets its own method rather than a second reading
+     * of the first.
+     *
+     * Applies to any absolute URI, not just a declared `base_uri` — a schema `$id` is the other
+     * caller. That is deliberate and it is the whole reason this stays STRUCTURAL: the method is
+     * told nothing about tenants, hosts or ownership, so 64's rule that this package stays ignorant
+     * of WHICH authority anyone claims is preserved. The comparison of two origins, and the meaning
+     * anyone attaches to their being equal, belongs to the caller — for 104 that is
+     * {@see \Splicewire\Tower\Data\SchemaRegistryFreezeInputData}, which is where knowledge of
+     * what a tenant is is allowed to live.
+     */
+    public static function originOf(string|bool|null $uri): ?string
+    {
+        if (! self::isAbsolute($uri)) {
+            return null;
+        }
+
+        $parts = parse_url(trim((string) $uri));
+
+        if (! is_array($parts)) {
+            return null;
+        }
+
+        $origin = $parts['scheme'].'://'.$parts['host'];
+
+        return isset($parts['port']) ? $origin.':'.$parts['port'] : $origin;
+    }
+
+    /**
      * The path of a declared authority, trimmed of slashes — `''` for a path-less authority.
      */
     public static function pathOf(string|bool|null $baseUri): string

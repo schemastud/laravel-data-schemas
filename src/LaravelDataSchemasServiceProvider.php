@@ -23,6 +23,8 @@ use Schemastud\DataSchemas\Overlay\InMemoryOverlayRegistry;
 use Schemastud\DataSchemas\Overlay\Lens\LensRegistry;
 use Schemastud\DataSchemas\Overlay\Lens\ReversibleResolver;
 use Schemastud\DataSchemas\Overlay\StaticOverlayResolver;
+use Schemastud\DataSchemas\Sources\PathScanSource;
+use Schemastud\DataSchemas\Sources\SchemaProjectionRegistry;
 use Schemastud\DataSchemas\Strategies\SchemaStrategiesRegistry;
 use Schemastud\DataSchemas\Support\SchemaDisk;
 
@@ -87,6 +89,14 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         // registry above and for the same reason — the storage is `config('data-schemas.id_parsers')`,
         // a list a package appends its own parser to from its own provider.
         $this->app->singleton(SchemaIdParsersRegistry::class);
+
+        // "Where do this host's schemas come from" — one enumerable answer instead of a scan
+        // hard-coded in `schemas:generate`. A SINGLETON, unlike the two config-reading bindings
+        // below it, because it holds registrations: a fresh instance per resolve would silently
+        // discard whatever another package contributed from its own provider. Laziness is bought
+        // instead by the entry type — a SchemaSource is asked at READ time, so a singleton here
+        // cannot freeze config the way a singleton generator would.
+        $this->app->singleton(SchemaProjectionRegistry::class);
 
         // The ONE config-aware step in schema identity. Bound rather than newed at call sites so a
         // host can swap the floor grammar; NOT a singleton, because `base_uri` and the parser list
@@ -159,6 +169,21 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
             $this->app->make(SchemaIdParsersRegistry::class),
             by: self::class,
         );
+
+        // Seed the projection registry with the ONE source this package has: the `auto_discover_types`
+        // path scan `schemas:generate` has always done. Registered here rather than assumed, so that a
+        // package contributing a second universe (beam's particle registry is the intended first) is
+        // enumerable BESIDE it rather than in place of it — which is the whole point of the seam.
+        //
+        // Seeded in boot(), not register(): a source is asked at read time, so nothing about it depends
+        // on config being final here, and boot is where the estate's other describe/contribute pairs sit.
+        $projection = $this->app->make(SchemaProjectionRegistry::class);
+
+        if (! $projection->has('path-scan')) {
+            $projection->register('path-scan', new PathScanSource, by: self::class);
+        }
+
+        $this->app->make(RegistryIndex::class)->describe($projection, by: self::class);
 
         // Contribute the resources:* projection pipelines (the open,
         // foundation-tier slice) into the shared registry. Guarded so the

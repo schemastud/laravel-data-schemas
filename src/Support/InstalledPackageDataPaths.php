@@ -24,7 +24,7 @@ namespace Schemastud\DataSchemas\Support;
  *
  * `scan_paths` arrived with ticket 152 and had **no package default**, so it was purely host-declared.
  * Measured 2026-08-27: exactly ONE root in the estate had ever declared it, and every other root fell
- * through {@see \Splicewire\Tower\Schema\SchemaDriftGuard::configuredScanPaths()}'s `app/` fallback —
+ * through {@see \Schemastud\DataSchemas\Lifecycle\SchemaDriftGuard::configuredScanPaths()}'s `app/` fallback —
  * which discovers nothing, because every `SchemaIdentity` class in this estate now lives in a package
  * (54 of them, across 9 packages). The guard was green estate-wide by not running, and the classes it
  * could not see were never frozen, so their `$id`s 404'd exactly as above.
@@ -103,6 +103,24 @@ class InstalledPackageDataPaths
      */
     public static function fromInstalledPackages(array $packages, string $vendorDirectory): array
     {
+        return array_values(array_keys(self::mapFromInstalledPackages($packages, $vendorDirectory)));
+    }
+
+    /**
+     * The same discovery, keyed by resolved `src/Data` directory to the composer package name that
+     * owns it (beam-facade ticket 176).
+     *
+     * The paths alone answer "what do I scan"; `schema:freeze`'s report-before-mutate step has to
+     * answer a second question — *whose shapes am I about to make this host answer for, forever* —
+     * and 107's flagship pass had to derive that by hand. A write-once mutation whose report cannot
+     * name its owners is a report you cannot act on.
+     *
+     * @param  array<int|string, mixed>  $packages  raw `installed.json` entries
+     * @param  string  $vendorDirectory  absolute path to the root's `vendor/`
+     * @return array<string, string> resolved absolute `src/Data` path => `vendor/name`
+     */
+    public static function mapFromInstalledPackages(array $packages, string $vendorDirectory): array
+    {
         $vendorDirectory = rtrim($vendorDirectory, '/');
         $found = [];
 
@@ -129,12 +147,42 @@ class InstalledPackageDataPaths
                 continue;
             }
 
-            $found[$dataDirectory] = true;
+            $found[$dataDirectory] = $name;
         }
 
-        $paths = array_keys($found);
-        sort($paths);
+        ksort($found);
 
-        return array_values($paths);
+        return $found;
+    }
+
+    /**
+     * `discover()`'s map form: resolved `src/Data` path => owning `vendor/name`.
+     *
+     * Same empty-not-throw contract as {@see discover()}.
+     *
+     * @return array<string, string>
+     */
+    public static function owners(?string $basePath = null): array
+    {
+        $basePath = $basePath ?? (function_exists('base_path') ? base_path() : getcwd());
+
+        $vendorDirectory = rtrim((string) $basePath, '/').'/vendor';
+        $installedJson = $vendorDirectory.'/composer/installed.json';
+
+        if (! is_file($installedJson)) {
+            return [];
+        }
+
+        $decoded = json_decode((string) file_get_contents($installedJson), true);
+
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $packages = $decoded['packages'] ?? $decoded;
+
+        return is_array($packages)
+            ? self::mapFromInstalledPackages($packages, $vendorDirectory)
+            : [];
     }
 }

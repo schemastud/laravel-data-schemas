@@ -25,7 +25,7 @@ use Schemastud\DataSchemas\Support\InstalledPackageDataPaths;
  * ## Why this needs no family-vendor list, which is the non-obvious part
  *
  * Scanning EVERY installed package reads as over-broad and is not, because the consumer
- * ({@see \Splicewire\Tower\Schema\SchemaDriftGuard::discover()}) filters to classes implementing
+ * ({@see \Schemastud\DataSchemas\Lifecycle\SchemaDriftGuard::discover()}) filters to classes implementing
  * {@see \Schemastud\DataSchemas\Contracts\SchemaIdentity} — an interface this package declares. A
  * third-party dependency will never implement it, so the filter is inherent in the contract rather
  * than maintained in a list that would drift the moment a vendor was added. That also keeps ticket

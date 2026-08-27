@@ -7,6 +7,9 @@ use Illuminate\Support\ServiceProvider;
 use Rushing\PipelineRegistry\PipelineRegistry;
 use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
+use Schemastud\DataSchemas\Commands\SchemaCheckCommand;
+use Schemastud\DataSchemas\Commands\SchemaFreezeCommand;
+use Schemastud\DataSchemas\Commands\SchemaFreezeVersionCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Contracts\ServedSchemaRegistry;
 use Schemastud\DataSchemas\Generators\ChainedGenerator;
@@ -198,8 +201,17 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
                 __DIR__.'/../config/data-schemas.php' => config_path('data-schemas.php'),
             ], 'data-schemas-config');
 
+            // The schema lifecycle CLI (beam-facade ticket 176). `schema:check` / `schema:freeze` /
+            // `schema:freeze-version` were `App\Console\Commands\*` at ~/Herd/splicewire-app — one
+            // host's private tooling, over an engine that lived in `splicewire/tower` (2 of 21 real
+            // Herd roots). This package reaches 15, and it is the package that MINTS the versioned
+            // `$id` ticket 107 obliges a host to answer for. Console-only: the guard is a build-time
+            // gate and is deliberately never wired into runtime boot.
             $this->commands([
                 GenerateJsonSchemaCommand::class,
+                SchemaCheckCommand::class,
+                SchemaFreezeCommand::class,
+                SchemaFreezeVersionCommand::class,
             ]);
         }
     }

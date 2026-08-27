@@ -6,6 +6,7 @@ use Schemastud\DataSchemas\PathGenerators\DefaultPathGenerator;
 use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\MigrationAttributesStrategy;
 use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
+use Schemastud\DataSchemas\Support\InstalledPackageDataPaths;
 use Schemastud\DataSchemas\Writers\SchemaFileWriter;
 
 return [
@@ -245,6 +246,52 @@ return [
     |
     */
     'id_parsers' => [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scan Paths (which versioned classes this host freezes and drift-checks)
+    |--------------------------------------------------------------------------
+    |
+    | The directories `schema:freeze` / `schema:check` sweep for `SchemaIdentity`
+    | Data classes (beam-facade ticket 152), defaulted here by ticket 107.
+    |
+    | THE DEFAULT IS THE APP PLUS EVERY INSTALLED PACKAGE'S `src/Data` TREE, and
+    | that is a ruling, not a convenience. Ticket 64 ruled an `$id`'s authority is
+    | the origin that serves THIS copy; 107 ruled the consequence the estate had
+    | been treating as a defect — `$id` divergence across hosts is CORRECT, one
+    | class legitimately minting N `$id`s across N hosts. What that obliges is
+    | this key: a host already stamps its own authority onto every versioned class
+    | it installs (the generator does it in memory for the OpenAPI spec and for
+    | `laravel-frame`'s live schema route), so it must ANSWER for all of them or
+    | its own `$id`s 404 at its own door.
+    |
+    | ⚠️ This key existed with NO package default and was therefore host-declared
+    | only — measured 2026-08-27, exactly ONE root in the estate had ever set it.
+    | Every other root fell through the guard's `app/` fallback, which discovers
+    | nothing, because all 54 `SchemaIdentity` classes in this estate live in
+    | packages. The guard was green estate-wide BY NOT RUNNING, and the classes it
+    | could not see were never frozen — so their `$id`s minted and then 404'd.
+    |
+    | 152 recorded the opposite policy at the one host that set it ("do not add a
+    | package this host merely consumes"). That caution is SUPERSEDED by 107:
+    | answering for a shape at your own origin is what an `$id` means under 64, so
+    | the thing it warned against is the intended behaviour. 152 was a task ticket
+    | clearing a codegen failure and never argued the point.
+    |
+    | Scanning every installed package is not over-broad: the consumer filters to
+    | classes implementing `Contracts\SchemaIdentity`, an interface THIS package
+    | declares, so a third-party dependency can never qualify. The narrowing lives
+    | in the contract rather than in a vendor list that would drift.
+    |
+    | Non-existent paths are skipped rather than fatal, so a host may name a
+    | package that is not installed in every environment. A host that wants a
+    | narrower population overrides this list knowingly.
+    |
+    */
+    'scan_paths' => [
+        app_path(),
+        ...InstalledPackageDataPaths::discover(),
+    ],
 
     /*
     |--------------------------------------------------------------------------

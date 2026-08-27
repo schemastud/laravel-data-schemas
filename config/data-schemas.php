@@ -128,9 +128,10 @@ return [
     |
     | Renamed from `JsonSchemaWriter` (the payload every Writer shares, so it
     | distinguished nothing) to name its STRATEGY, matching SchemaRegistry ←
-    | FilesystemSchemaRegistry and PathGenerator ← DefaultPathGenerator. The old
-    | class survives as a deprecated subclass, because this key is PUBLISHED and
-    | hosts already carry the old name in their own config file.
+    | FilesystemSchemaRegistry and PathGenerator ← DefaultPathGenerator. The
+    | deprecated subclass that carried the old name is gone: the one host that
+    | resolves this package from live source (`~/Herd/schemastud`) now names the
+    | new class in its own published config.
     |
     */
     'writer' => SchemaFileWriter::class,

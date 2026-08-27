@@ -8,9 +8,7 @@ use Rushing\Popcorn\Laravel\PopcornServiceProvider;
 use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
 use Schemastud\DataSchemas\Support\FileSchemaCollection;
 use Schemastud\DataSchemas\Support\WrittenSchema;
-use Schemastud\DataSchemas\Writers\JsonSchemaWriter;
 use Schemastud\DataSchemas\Writers\SchemaFileWriter;
-use Schemastud\DataSchemas\Writers\Writer;
 
 /**
  * The writer went through the `File` facade at absolute paths, which is not fakeable and
@@ -79,14 +77,6 @@ class SchemaFileWriterTest extends TestCase
         Storage::fake('data-schemas');
         (new SchemaFileWriter($this->config(['format_output' => false])))->write($this->collection());
         $this->assertStringNotContainsString("\n", Storage::disk('data-schemas')->get('App/Data/UserData.schema.json'));
-    }
-
-    public function test_the_old_class_name_still_resolves_for_hosts_that_published_it_in_config(): void
-    {
-        $writer = new JsonSchemaWriter($this->config());
-
-        $this->assertInstanceOf(SchemaFileWriter::class, $writer);
-        $this->assertInstanceOf(Writer::class, $writer);
     }
 
     public function test_the_shipped_config_names_the_renamed_implementation(): void

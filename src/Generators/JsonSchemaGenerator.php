@@ -211,7 +211,19 @@ class JsonSchemaGenerator implements Generator
             // is called in the document moves.
             $wireName = $this->wireName($property);
 
-            $schema['properties'][$wireName] = $this->generatePropertySchema($property);
+            $propertySchema = $this->generatePropertySchema($property);
+
+            // The declared default, published as the `default` keyword — see
+            // declaredDefault(). Keyed on the SAME $wireName as `required` above, because
+            // 54's projection means the document key is no longer the PHP name and the two
+            // statements must be about the same property.
+            $declared = $this->declaredDefault($property, $propertySchema);
+
+            if ($declared !== []) {
+                $propertySchema['default'] = $declared[0];
+            }
+
+            $schema['properties'][$wireName] = $propertySchema;
 
             if ($this->isRequired($property)) {
                 $required[] = $wireName;
@@ -231,7 +243,13 @@ class JsonSchemaGenerator implements Generator
                 // vendor keyword is an out-of-band annotation for our own consumers
                 // (x-optional/x-lazy and downstream x-beat/x-ground/x-generate) — never
                 // part of the LLM-facing contract — so strip all of them.
-                unset($propSchema['examples'], $propSchema['readOnly'], $propSchema['nullable']);
+                //
+                // `default` joins them: OpenAI's strict subset REJECTS the keyword at the
+                // provider, so a schema that carries it never reaches a completion. Stripping
+                // here rather than branching the emit keeps declaredDefault() mode-independent
+                // — this removes a keyword from an already-built schema, it does not decide
+                // whether a property has a default (see declaredDefault()).
+                unset($propSchema['examples'], $propSchema['readOnly'], $propSchema['nullable'], $propSchema['default']);
 
                 foreach (array_keys($propSchema) as $key) {
                     if (is_string($key) && str_starts_with($key, 'x-')) {
@@ -897,6 +915,165 @@ class JsonSchemaGenerator implements Generator
         }
 
         return $property->hasDefaultValue();
+    }
+
+    /**
+     * The declared default value, ready to publish as the `default` keyword — or `[]` when
+     * this property must not carry one. A one-element list, so a legitimately falsy default
+     * (`0`, `''`, `false`, `[]`) is not mistaken for "no default".
+     *
+     * api-surface-coherence 72. The keyword's consumer is a DATA path, not a document one:
+     * `Migration\Rungs\*` were written against `array_key_exists('default', $prop)` and every
+     * branch was dead, so a newly-added field migrated to `emptyForType()` — a meaningless
+     * typed empty — where the class declares a real value. Measured over 577 Data classes /
+     * 3032 properties: 58 properties migrate to their declared value after this, 39 are
+     * carved out by the type guard below, and nothing else moves.
+     *
+     * **One value-level rule, applied identically on every mode — deliberately no mode
+     * branch.** `isRequired()` already carries a request-mode default rule; a second,
+     * independent mode-dependent rule over the same property is exactly the drift 54's
+     * inbound warned about (the two statements must agree about the same property under the
+     * same name). Uniformity makes disagreement structurally impossible instead of
+     * test-enforced. `llm_strict`'s strip is not a reintroduction: it removes the keyword
+     * from an already-built schema, it does not decide whether a property has one.
+     *
+     * Three gates, in order:
+     *
+     * 1. **Ask spatie** (via {@see hasDefaultValue()} / `DataProperty::$defaultValue`), never
+     *    re-derive — the 31/70, 54 and `wireName()` precedents all ruled this way, and raw
+     *    reflection answers `false` for a promoted property, the commonest way to write one.
+     * 2. **Never `null`.** 82% of the estate's 1304 defaults are literal `null`, and `null`
+     *    is the destructive value in both consumers: it would migrate the majority of new
+     *    fields to null instead of a typed empty, and RJSF would submit an explicit `null`
+     *    for every untouched optional field instead of omitting the key.
+     * 3. **Only where the value is type-consistent with the property's own schema** — see
+     *    {@see defaultIsTypeConsistent()}, where the reason is correctness, not tidiness.
+     *
+     * Serialization is `is_scalar() || is_array() || BackedEnum` (a case emits `$case->value`,
+     * the same rule `ensureEnumDef()` already applies to the `enum` list). The estate's four
+     * object defaults — all `SourceRef` — emit nothing.
+     *
+     * @return array{0: mixed}|array{}
+     */
+    protected function declaredDefault(ReflectionProperty $property, array $propertySchema): array
+    {
+        if (! $this->hasDefaultValue($property)) {
+            return [];
+        }
+
+        $dataProperty = $this->spatieProperty($property);
+
+        $value = $dataProperty !== null
+            ? $dataProperty->defaultValue
+            : ($property->hasDefaultValue() ? $property->getDefaultValue() : null);
+
+        if ($value === null) {
+            return [];
+        }
+
+        if ($value instanceof BackedEnum) {
+            $value = $value->value;
+        }
+
+        if (! is_scalar($value) && ! is_array($value)) {
+            return [];
+        }
+
+        if (! $this->defaultIsTypeConsistent($value, $propertySchema)) {
+            return [];
+        }
+
+        return [$value];
+    }
+
+    /**
+     * Would this default value VALIDATE against the schema of the property carrying it?
+     *
+     * ⚠️ This guard is correctness, not tidiness — do not relax it as cosmetic.
+     * `MigrationRung::attempt()` puts every candidate through
+     * `AcceptanceGate::accepts($candidate, $request->to)` — real `opis/json-schema`
+     * validation against the target — and **a candidate the gate rejects makes the rung
+     * abstain, demoting the ladder to the next, weaker rung.** So publishing `default: []`
+     * on a property the schema types `object` does not merely look wrong in the document:
+     * `StructuralRung` fills the field with `[]`, the gate fails it against `type: object`,
+     * and a field that migrates correctly today silently routes to `LlmTryRung` or fails.
+     * The damage is to the ladder's ROUTING, and it would surface only as "migrations got
+     * worse".
+     *
+     * This is what carves out 72's 39: 33 `object`-typed properties declaring PHP `[]`
+     * (which encodes as `[]`, a JSON array, not `{}`) and 6 array-typed properties whose
+     * default is a string-keyed structure (which encodes as an object). 72 ruled skip, do not
+     * coerce — coercing would make the generator a second, worse reader of a fact the type
+     * system already holds.
+     *
+     * A schema whose type cannot be read — a bare `$ref` to something with no judgeable
+     * shape, or an untyped leaf — is not consistent by default; unprovable is treated as
+     * unsafe, on the same gate-demotion logic. `$ref`s ARE followed into `$defs` (already
+     * populated by `generatePropertySchema()` before this runs), which is how an enum-typed
+     * property's declared case is checked against the enum's own value list.
+     */
+    protected function defaultIsTypeConsistent(mixed $value, array $propertySchema): bool
+    {
+        $resolved = $propertySchema;
+
+        if (isset($resolved['$ref']) && isset($this->defs[$this->defKey($resolved['$ref'])])) {
+            $resolved = $this->defs[$this->defKey($resolved['$ref'])];
+        }
+
+        // An enum def states the admissible values outright — a stronger check than the type.
+        if (! empty($resolved['enum'])) {
+            return in_array($value, $resolved['enum'], true);
+        }
+
+        // Anything else behind a `$ref` is a nested OBJECT default — the estate's four
+        // `SourceRef`s. Spatie hands these back already flattened to an associative array
+        // (`DataProperty::$defaultValue`), so they are indistinguishable from a genuine map
+        // by value alone; the `$ref` is the signal. 72 ruled skip: a nested default duplicates
+        // the referenced class's own declared defaults, which the `$defs` entry already
+        // publishes property-by-property.
+        if (isset($propertySchema['$ref'])) {
+            return false;
+        }
+
+        $types = $resolved['type'] ?? null;
+        $types = is_array($types) ? $types : ($types === null ? [] : [$types]);
+
+        if ($types === []) {
+            return false;
+        }
+
+        $kind = match (true) {
+            is_bool($value) => 'boolean',
+            is_int($value) => 'integer',
+            is_float($value) => 'number',
+            is_string($value) => 'string',
+            // PHP types a list and a map identically; the encoded JSON does not. An empty
+            // array encodes as `[]`, so it is an array — never the `{}` an `object` wants.
+            is_array($value) => array_is_list($value) ? 'array' : 'object',
+            default => null,
+        };
+
+        if ($kind === null) {
+            return false;
+        }
+
+        // An integer is a valid `number` in JSON Schema; the reverse is not true.
+        if ($kind === 'integer' && in_array('number', $types, true)) {
+            return true;
+        }
+
+        return in_array($kind, $types, true);
+    }
+
+    /**
+     * The `$defs` key a `$ref` string points at — either the `#/$defs/Short` legacy form or
+     * an absolute versioned `$id`, which is its own key. See {@see ensureDef()}.
+     */
+    protected function defKey(string $ref): string
+    {
+        return str_starts_with($ref, '#/$defs/')
+            ? substr($ref, strlen('#/$defs/'))
+            : $ref;
     }
 
     /**

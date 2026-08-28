@@ -36,9 +36,20 @@ complement). If none holds, the pair stays **lossy**.
 
 ## The registry (`LensRegistry`)
 
-Declared lenses are enumerable. A `LensRegistration` carries a `key` (`vendor/lens-name` — *not* the
-association's `@id`, since two lenses legitimately share one canonical), a **tier**, the association
-(or a closure building it lazily), and a `LensEvidence` set.
+Declared lenses are enumerable. A `LensRegistration` carries a `key` (dotted `vendor.lens-name`, e.g.
+`audiostud.song-to-timeline` — *not* the association's `@id`, since two lenses legitimately share one
+canonical), a **tier**, the association (or a closure building it lazily), and a `LensEvidence` set.
+
+**Keys are dotted, and the `@id` beside them is not.** `LensRegistry` implements the estate's `Registry`
+contract (it *holds* a `BasicRegistry`; it does not extend one), so a key is a `RegistryKey` under the
+`schemas.lenses` root and `/` is not a legal key character — a slashed spelling would have cost a second
+key type to keep one punctuation mark. An association's `@id` (`audiostud/timeline-otio`) is a schema
+identifier rather than an address and keeps its slash unchanged. A malformed key is refused at
+registration, not at read.
+
+Two `keys()`-shaped reads, deliberately named apart: `keys()` is the contract's and returns absolute
+`RegistryKey`s (`schemas.lenses.audiostud.song-to-timeline`); `lensKeys()` is this registry's own
+vocabulary and returns the bare relative strings.
 
 | tier | claim |
 |---|---|

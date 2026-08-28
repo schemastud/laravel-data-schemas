@@ -11,7 +11,15 @@ use Closure;
 // associations legitimately share an `@id` while being different lenses over it —
 // the motivating satellite declares two vendor downscales of the same
 // `audiostud/timeline-otio` canonical — so keying on `id` would have one silently
-// evict the other. The key is `vendor/lens-name`.
+// evict the other. The key is dotted `vendor.lens-name`
+// (`audiostud.song-to-timeline`).
+//
+// The two spellings differ on purpose and the difference is not cosmetic: the key is
+// an ADDRESS, parsed by the estate's `Key` grammar where `/` is not a legal
+// character, while the `@id` is a SCHEMA IDENTIFIER that keeps its slash because that
+// is what a canonical is called everywhere else. A registry that accepted both would
+// need a second key type to hold the slashed half, which is the fork the dotted
+// convention exists to avoid.
 //
 // **There is no `fidelity()` accessor here, and that omission is the design.** The
 // association's own `fidelity` field is documented at its declaration site as a
@@ -26,7 +34,7 @@ class LensRegistration
     private ?LensAssociation $resolved = null;
 
     /**
-     * @param  string  $key  registry key, `vendor/lens-name` — not the association's `@id`
+     * @param  string  $key  registry key, dotted `vendor.lens-name` — not the association's `@id`
      * @param  LensTier  $tier  whose truth this lens is (visibility, never endorsement)
      * @param  LensAssociation|Closure(): LensAssociation  $association  the declaration; a closure stays lazy
      * @param  LensEvidence  $evidence  samples the laws are exercised against; empty ⇒ certifies nothing

@@ -4,6 +4,8 @@ namespace Schemastud\DataSchemas\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use Rushing\Popcorn\Registries\Exceptions\InvalidRegistryKey;
+use Rushing\Popcorn\Registries\Registry;
 use Schemastud\DataSchemas\Overlay\Lens\DirectedLens;
 use Schemastud\DataSchemas\Overlay\Lens\Direction;
 use Schemastud\DataSchemas\Overlay\Lens\Fidelity;
@@ -23,27 +25,34 @@ class LensRegistryTest extends TestCase
     public function test_it_enumerates_registered_lenses_in_registration_order(): void
     {
         $registry = (new LensRegistry)
-            ->register($this->registration('host/one'))
-            ->register($this->registration('host/two'));
+            ->register($this->registration('host.one'))
+            ->register($this->registration('host.two'));
 
-        $this->assertSame(['host/one', 'host/two'], $registry->keys());
+        // The contract's `keys()` returns ABSOLUTE RegistryKeys; `lensKeys()` is this
+        // registry's own bare vocabulary. Both pinned, because they are the pair that
+        // would otherwise have merged silently (registry-kernel 38, amendment 4).
+        $this->assertSame(['host.one', 'host.two'], $registry->lensKeys());
+        $this->assertSame(
+            ['schemas.lenses.host.one', 'schemas.lenses.host.two'],
+            array_map(fn ($k) => (string) $k, $registry->keys()),
+        );
         $this->assertCount(2, $registry->all());
-        $this->assertSame('host/two', $registry->get('host/two')?->key);
-        $this->assertNull($registry->get('host/nope'));
+        $this->assertSame('host.two', $registry->get('host.two')?->key);
+        $this->assertNull($registry->get('host.nope'));
     }
 
     public function test_each_registration_carries_its_tier_and_the_tiers_are_separable(): void
     {
         $registry = (new LensRegistry)
-            ->register($this->registration('host/applied', LensTier::HostApplied))
-            ->register($this->registration('engine/binding', LensTier::EngineAuthoritative));
+            ->register($this->registration('host.applied', LensTier::HostApplied))
+            ->register($this->registration('engine.binding', LensTier::EngineAuthoritative));
 
         $this->assertSame(
-            ['host/applied'],
+            ['host.applied'],
             array_map(fn ($r) => $r->key, $registry->ofTier(LensTier::HostApplied)),
         );
         $this->assertSame(
-            ['engine/binding'],
+            ['engine.binding'],
             array_map(fn ($r) => $r->key, $registry->ofTier(LensTier::EngineAuthoritative)),
         );
     }
@@ -53,11 +62,11 @@ class LensRegistryTest extends TestCase
         // The motivating satellite declares two vendor downscales of ONE OTIO canonical.
         // Keying on the association's `@id` would have silently evicted one of them.
         $registry = (new LensRegistry)
-            ->register($this->registration('vendor/minimax', id: 'app/timeline-otio'))
-            ->register($this->registration('vendor/elevenlabs', id: 'app/timeline-otio'));
+            ->register($this->registration('vendor.minimax', id: 'app/timeline-otio'))
+            ->register($this->registration('vendor.elevenlabs', id: 'app/timeline-otio'));
 
         $this->assertSame(
-            ['vendor/minimax', 'vendor/elevenlabs'],
+            ['vendor.minimax', 'vendor.elevenlabs'],
             array_map(fn ($r) => $r->key, $registry->forId('app/timeline-otio')),
         );
         $this->assertSame([], $registry->forId('app/unknown'));
@@ -65,11 +74,11 @@ class LensRegistryTest extends TestCase
 
     public function test_a_duplicate_key_throws_rather_than_overwriting(): void
     {
-        $registry = (new LensRegistry)->register($this->registration('host/one'));
+        $registry = (new LensRegistry)->register($this->registration('host.one'));
 
         $this->expectException(InvalidArgumentException::class);
 
-        $registry->register($this->registration('host/one'));
+        $registry->register($this->registration('host.one'));
     }
 
     public function test_an_unexercised_lossless_claim_certifies_lossy(): void
@@ -77,43 +86,43 @@ class LensRegistryTest extends TestCase
         // No evidence: the laws over zero samples are vacuously true, so "submitted
         // nothing" must not read as "survived everything".
         $registry = (new LensRegistry)->register(new LensRegistration(
-            key: 'host/unexercised',
+            key: 'host.unexercised',
             tier: LensTier::HostApplied,
             association: LensAssociation::bijective('app/thing', '$', new IdentityLens),
         ));
 
-        $this->assertSame(Fidelity::LosslessEligible, $registry->get('host/unexercised')?->association()->fidelity);
-        $this->assertSame(Fidelity::Lossy, $registry->certifiedFidelity('host/unexercised'));
+        $this->assertSame(Fidelity::LosslessEligible, $registry->get('host.unexercised')?->association()->fidelity);
+        $this->assertSame(Fidelity::Lossy, $registry->certifiedFidelity('host.unexercised'));
     }
 
     public function test_a_lossless_claim_with_surviving_evidence_certifies_lossless(): void
     {
         $registry = (new LensRegistry)->register(new LensRegistration(
-            key: 'host/exercised',
+            key: 'host.exercised',
             tier: LensTier::HostApplied,
             association: LensAssociation::bijective('app/thing', '$', new IdentityLens),
             evidence: new LensEvidence(['a', 'b'], [['c', 'a']]),
         ));
 
-        $this->assertSame(Fidelity::LosslessEligible, $registry->certifiedFidelity('host/exercised'));
+        $this->assertSame(Fidelity::LosslessEligible, $registry->certifiedFidelity('host.exercised'));
     }
 
     public function test_a_law_breaking_lens_is_downgraded_despite_its_claim(): void
     {
         $registry = (new LensRegistry)->register(new LensRegistration(
-            key: 'host/liar',
+            key: 'host.liar',
             tier: LensTier::HostApplied,
             association: LensAssociation::bijective('app/thing', '$', new TruncatingLens),
             evidence: new LensEvidence(['keep-all-of-this']),
         ));
 
-        $this->assertSame(Fidelity::LosslessEligible, $registry->get('host/liar')?->association()->fidelity);
-        $this->assertSame(Fidelity::Lossy, $registry->certifiedFidelity('host/liar'));
+        $this->assertSame(Fidelity::LosslessEligible, $registry->get('host.liar')?->association()->fidelity);
+        $this->assertSame(Fidelity::Lossy, $registry->certifiedFidelity('host.liar'));
     }
 
     public function test_an_unknown_key_certifies_lossy_rather_than_lossless(): void
     {
-        $this->assertSame(Fidelity::Lossy, (new LensRegistry)->certifiedFidelity('host/never-registered'));
+        $this->assertSame(Fidelity::Lossy, (new LensRegistry)->certifiedFidelity('host.never-registered'));
     }
 
     public function test_a_registration_exposes_no_bare_fidelity_accessor(): void
@@ -129,7 +138,7 @@ class LensRegistryTest extends TestCase
         $built = 0;
 
         $registration = new LensRegistration(
-            key: 'host/lazy',
+            key: 'host.lazy',
             tier: LensTier::HostApplied,
             association: function () use (&$built) {
                 $built++;
@@ -151,7 +160,7 @@ class LensRegistryTest extends TestCase
         $built = 0;
 
         $registry = (new LensRegistry)->register(new LensRegistration(
-            key: 'host/lazy-evidence',
+            key: 'host.lazy-evidence',
             tier: LensTier::HostApplied,
             association: LensAssociation::bijective('app/thing', '$', new IdentityLens),
             evidence: new LensEvidence(function () use (&$built) {
@@ -164,7 +173,7 @@ class LensRegistryTest extends TestCase
         $registry->all();
 
         $this->assertSame(0, $built);
-        $this->assertSame(Fidelity::LosslessEligible, $registry->certifiedFidelity('host/lazy-evidence'));
+        $this->assertSame(Fidelity::LosslessEligible, $registry->certifiedFidelity('host.lazy-evidence'));
         $this->assertSame(1, $built);
     }
 
@@ -172,7 +181,7 @@ class LensRegistryTest extends TestCase
     {
         $registry = (new LensRegistry)
             ->register(new LensRegistration(
-                key: 'host/applied',
+                key: 'host.applied',
                 tier: LensTier::HostApplied,
                 association: new LensAssociation(
                     id: 'app/song',
@@ -185,7 +194,7 @@ class LensRegistryTest extends TestCase
                 of: 'song → timeline',
             ))
             ->register(new LensRegistration(
-                key: 'engine/binding',
+                key: 'engine.binding',
                 tier: LensTier::EngineAuthoritative,
                 association: LensAssociation::bijective('app/spine', '$', new IdentityLens),
                 evidence: new LensEvidence(['a']),
@@ -195,7 +204,7 @@ class LensRegistryTest extends TestCase
         $rows = $registry->describe();
 
         $this->assertSame([
-            'key' => 'host/applied',
+            'key' => 'host.applied',
             'tier' => 'host-applied',
             'owner' => 'vendor/app',
             'of' => 'song → timeline',
@@ -217,6 +226,30 @@ class LensRegistryTest extends TestCase
     {
         $this->assertStringContainsString('authoritative nowhere', LensTier::HostApplied->blurb());
         $this->assertStringContainsString('every host', LensTier::EngineAuthoritative->blurb());
+    }
+
+    public function test_it_implements_the_kernel_registry_contract(): void
+    {
+        $registry = (new LensRegistry)->register($this->registration('host.one'));
+
+        $this->assertInstanceOf(Registry::class, $registry);
+        $this->assertTrue($registry->has('host.one'));
+        $this->assertFalse($registry->has('host.nope'));
+        $this->assertSame('host.one', $registry->resolve('host.one')->key);
+        $this->assertNull($registry->tryResolve('host.nope'));
+        $this->assertCount(1, $registry->matches('schemas.lenses'));
+        $this->assertCount(1, $registry->unfiltered()->keys());
+    }
+
+    public function test_a_slashed_key_is_refused_at_its_declaration_site(): void
+    {
+        // The convention is enforced by the key grammar now, not by a docblock asking
+        // nicely — `/` is not a Key character, and a lens declared with one is a defect
+        // its author can fix, so it is loud at registration rather than an
+        // unaddressable row nobody can look up afterwards.
+        $this->expectException(InvalidRegistryKey::class);
+
+        (new LensRegistry)->register($this->registration('audiostud/song-to-timeline'));
     }
 
     private function registration(

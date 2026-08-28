@@ -17,6 +17,7 @@ use Schemastud\DataSchemas\Generators\ChainedGenerator;
 use Schemastud\DataSchemas\Generators\Generator;
 use Schemastud\DataSchemas\Http\SchemaDocumentController;
 use Schemastud\DataSchemas\Http\SchemaDoorMount;
+use Schemastud\DataSchemas\Http\ServedTier;
 use Schemastud\DataSchemas\Ids\SchemaIdParsersRegistry;
 use Schemastud\DataSchemas\Ids\SchemaIdResolver;
 use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
@@ -273,12 +274,25 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
             return;
         }
 
-        $domain = SchemaDoorMount::domainFor($baseUri);
+        $tiers = ServedTier::declared(
+            $this->app['config']->get('data-schemas.served_tiers'),
+            SchemaDoorMount::domainFor($baseUri),
+        );
 
-        $route = $domain === null
-            ? Route::get($pattern, SchemaDocumentController::class)
-            : Route::domain($domain)->get($pattern, SchemaDocumentController::class);
+        foreach ($tiers as $tier) {
+            // The domain is applied through the registrar BEFORE the route is added, and so is the
+            // middleware — `RouteCollection::addToCollections()` reads the domain at add time to choose
+            // which bucket to index into, so a domain set afterwards leaves the route filed as undomained.
+            $route = $tier->domain === null
+                ? Route::middleware($tier->middleware)->get($pattern, SchemaDocumentController::class)
+                : Route::domain($tier->domain)->middleware($tier->middleware)->get($pattern, SchemaDocumentController::class);
 
-        $route->where('path', '.*')->name('data-schemas.document');
+            // The matched tier travels on the ROUTE, not in the container: which tier answered is a
+            // property of what matched, and a container binding would have to be re-derived from the
+            // request anyway — badly, since the domain is what distinguishes them.
+            $route->where('path', '.*')
+                ->defaults(SchemaDocumentController::TIER, $tier->key)
+                ->name($tier->routeName());
+        }
     }
 }

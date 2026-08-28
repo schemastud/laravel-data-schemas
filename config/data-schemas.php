@@ -318,15 +318,59 @@ return [
     | `schemas/lifecycle`, so "the filesystem registry" has no single referent.
     | Empty or unset falls back to `registry_directory` above.
     |
-    | This is the WHOLE of the door's gate, and the omission is the point: the
-    | tenant/runtime tier is not listable here, because tenant `$id`s are
-    | payload-supplied and nothing validates that a tenant owns the authority it
-    | claims. Serving those from this host's origin would mint exactly the
-    | unowned-authority claim ticket 64 removed. Bind
-    | Contracts\ServedSchemaRegistry to change what the door can see.
+    | This is the WHOLE of the HOST tier's gate, and the omission was the point:
+    | the tenant/runtime tier is not listable here. Bind
+    | Contracts\ServedSchemaRegistry to change what the host tier can see, or
+    | declare a second tier under `served_tiers` below.
     |
     */
     'served_directories' => [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Served Tiers (beam-facade tickets 170 + 180)
+    |--------------------------------------------------------------------------
+    |
+    | The door served ONE population with ONE constant `Cache-Control` while
+    | every document was a host's own public artifact. Ticket 180 ruled a
+    | per-tenant tier is AUTHENTICATED, and the moment a second population is
+    | served, both of those stop being constants and become properties of which
+    | tier matched.
+    |
+    | EMPTY IS TODAY'S BEHAVIOUR, EXACTLY: one tier over
+    | Contracts\ServedSchemaRegistry, mounted bare, answering
+    | `public, max-age=31536000, immutable` on whatever domain `base_uri`
+    | implies. Upgrading changes nothing.
+    |
+    | A tier is `{registry, middleware, cache, domain}`:
+    |
+    |   'tenant' => [
+    |       'registry'   => Tenant\ServedRegistry::class,   // container key, resolved PER REQUEST
+    |       'middleware' => [InitializeTenancyBySubdomain::class, AuthenticateWithSanctumOrGuestToken::class],
+    |       'cache'      => 'private, max-age=31536000, immutable',
+    |       'domain'     => '{tenant}.'.env('APP_DOMAIN'),
+    |   ],
+    |
+    | THIS PACKAGE OWNS NEITHER THE AUTH POSTURE NOR THE TENANCY DEPENDENCY.
+    | Ticket 180's ruling is explicit that authentication is not supplied by
+    | default from here, and ticket 82's rule already forbids the tenancy
+    | dependency. `middleware` is host-declared class strings this package never
+    | inspects, and `registry` is a container key it never binds.
+    |
+    | ⚠️ `public` is the directive that authorizes the leak: a shared cache may
+    | store a `public` response and hand it to the next caller, which on a
+    | per-tenant tier is a disclosure. Anything but the host's own artifacts
+    | wants `private`. `immutable` stays either way, because it is true — the
+    | registry is write-once behind a structural fingerprint guard.
+    |
+    | ⚠️ Tiers separate by DOMAIN, which falls out of the identity contract for
+    | free: the `$id` IS the request URL, so a tenant artifact's URL already
+    | carries the tenant's host. Declaration order is NOT match order — Laravel
+    | merges domain-constrained routes ahead of undomained ones, so giving a
+    | tier a domain is what makes it win, not listing it first.
+    |
+    */
+    'served_tiers' => [],
 
     /*
     |--------------------------------------------------------------------------

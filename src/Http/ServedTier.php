@@ -94,11 +94,24 @@ class ServedTier
     /**
      * Every declared tier, in mount order, or the single synthesized default when a host declares none.
      *
-     * ⚠️ **Order is mount order and mount order is not match order.** Laravel indexes domain-constrained
-     * routes in a separate bucket that `RouteCollection::get()` merges *ahead* of the undomained ones, so
-     * a domained tenant tier is tried before an undomained host tier regardless of what this list says —
-     * which is the behaviour we want and is the same mechanism {@see SchemaDoorMount} relies on for the
-     * path-less case. Declaring a tier first does not make it win; giving it a domain does.
+     * ⚠️ **Domained tiers are returned FIRST, and that ordering is load-bearing — it is not a tidy-up.**
+     *
+     * An earlier version of this method returned tiers in declaration order, on the belief that Laravel
+     * tries domain-constrained routes ahead of undomained ones. **That is false**, and it was measured
+     * false end-to-end at `~/Herd/splicewire-app` on 2026-08-27: a request to
+     * `https://bruckner-demo.app.splicewire.test/schemas/door-acceptance/1` matched
+     * `data-schemas.document` — the **undomained host tier** — with `schemaTier: host`, so the tenant
+     * tier never ran, its middleware never ran, and an *unauthenticated* request reached the door.
+     *
+     * `RouteCollection::matchAgainstRoutes()` partitions fallbacks and then takes the **first route that
+     * matches, in insertion order**. An undomained route matches every host, so whichever of the two is
+     * registered first wins for every request. The domain keying in `addToCollections()` decides
+     * *replacement*, not *precedence* — those are different mechanisms and conflating them is what
+     * produced the defect.
+     *
+     * So the rule is: **a domained tier must be registered before an undomained one**, which this sort
+     * guarantees rather than leaving to how a host happened to order its config. Declaration order is
+     * preserved within each group, so two domained tiers still resolve in the order the host wrote them.
      *
      * @param  mixed  $declared  the raw `data-schemas.served_tiers` config value
      * @param  string|null  $defaultDomain  the domain the host tier mounts on, from {@see SchemaDoorMount::domainFor()}
@@ -132,6 +145,16 @@ class ServedTier
             );
         }
 
-        return $tiers === [] ? [new self(self::DEFAULT_KEY, domain: $defaultDomain)] : $tiers;
+        if ($tiers === []) {
+            return [new self(self::DEFAULT_KEY, domain: $defaultDomain)];
+        }
+
+        // Stable partition: domained first, undomained last, each group in declaration order. `usort`
+        // is NOT stable enough to express "preserve declaration order within a group" portably, so the
+        // two groups are built explicitly.
+        $domained = array_values(array_filter($tiers, fn (self $t) => $t->domain !== null));
+        $undomained = array_values(array_filter($tiers, fn (self $t) => $t->domain === null));
+
+        return array_merge($domained, $undomained);
     }
 }

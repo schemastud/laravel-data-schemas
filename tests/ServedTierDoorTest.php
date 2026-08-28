@@ -221,6 +221,76 @@ class ServedTierDoorTest extends TestCase
         $this->assertStringNotContainsString('HOST REGISTRY', $response->getContent());
     }
 
+    /**
+     * ⚠️ **The regression this file exists for, and the one the header assertions could not see.**
+     *
+     * The first version of the seam registered tiers in declaration order, on the belief that Laravel
+     * tries domain-constrained routes before undomained ones. It does not: `matchAgainstRoutes()` takes
+     * the first route that matches in **insertion order**, and an undomained route matches every host.
+     *
+     * Measured end-to-end at `~/Herd/splicewire-app` on 2026-08-27 — a request to a tenant subdomain
+     * matched `data-schemas.document`, the **host** tier, so the tenant tier's middleware never ran and
+     * an unauthenticated request reached the door. Every header assertion in this file still passed,
+     * because with a host-tier registry that holds nothing for that URL the answer is a 404 either way.
+     *
+     * So this asserts **which route matched**, which is the only thing that can see it.
+     */
+    public function test_a_tenant_subdomain_matches_the_tenant_tier_even_when_the_host_tier_is_declared_first(): void
+    {
+        $this->refreshApplicationWithTiers([
+            // Declared host-first ON PURPOSE: the ordering must be guaranteed by the seam, not by how a
+            // host happened to write its config.
+            'host' => [],
+            'tenant' => [
+                'registry' => 'tier.tenant.registry',
+                'middleware' => ['throttle:60,1'],
+                'cache' => 'private, max-age=31536000, immutable',
+                // The estate's real shape: the tenant pattern is one label DEEPER than the central
+                // host, so the two cannot overlap. See the next test for what happens when they do.
+                'domain' => '{tenant}.app.example.test',
+            ],
+        ]);
+
+        $matched = Route::getRoutes()->match(\Illuminate\Http\Request::create('https://acme.app.example.test/schemas/thing/1', 'GET'));
+
+        $this->assertSame('data-schemas.document.tenant', $matched->getName());
+        $this->assertSame('tenant', $matched->defaults[SchemaDocumentController::TIER] ?? null);
+        $this->assertContains('throttle:60,1', $matched->gatherMiddleware(), 'the tenant tier’s middleware must be the stack that runs');
+
+        // And the host tier still wins on the host authority.
+        $host = Route::getRoutes()->match(\Illuminate\Http\Request::create('https://app.example.test/schemas/thing/1', 'GET'));
+        $this->assertSame('data-schemas.document', $host->getName());
+    }
+
+    /**
+     * ⚠️ **A hazard the domained-first ordering makes strictly more likely, recorded rather than fixed.**
+     *
+     * A wildcard tenant pattern that is a SIBLING of the central host — `{tenant}.example.test` against a
+     * central `app.example.test` — matches the central host too (`{tenant}` = `app`). Registering domained
+     * tiers first then hands every central request to the tenant tier, behind the tenant tier's auth.
+     *
+     * This package cannot fix it: it is told a domain string and has no way to know a host's central
+     * domain, and inventing one would be the tenancy vocabulary ticket 82 forbids it. So it is asserted
+     * as the documented behaviour and called out in `config/data-schemas.php`. **A host whose tenant
+     * pattern can match its own central host must make the pattern deeper**, which the estate's real
+     * shape (`{tenant}.app.splicewire.test` under a central `app.splicewire.test`) already is.
+     */
+    public function test_a_sibling_wildcard_pattern_swallows_the_central_host_and_that_is_the_hosts_to_avoid(): void
+    {
+        $this->refreshApplicationWithTiers([
+            'host' => [],
+            'tenant' => ['registry' => 'tier.tenant.registry', 'cache' => 'private', 'domain' => '{tenant}.example.test'],
+        ]);
+
+        $matched = Route::getRoutes()->match(\Illuminate\Http\Request::create('https://app.example.test/schemas/thing/1', 'GET'));
+
+        $this->assertSame(
+            'data-schemas.document.tenant',
+            $matched->getName(),
+            'a sibling wildcard DOES swallow the central host — deepen the pattern rather than expecting the package to disambiguate',
+        );
+    }
+
     public function test_a_tier_may_declare_itself_unconstrained_explicitly(): void
     {
         $tiers = ServedTier::declared(['host' => ['domain' => null]], 'schemas.example.test');

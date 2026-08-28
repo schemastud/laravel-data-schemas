@@ -365,9 +365,21 @@ return [
     |
     | ⚠️ Tiers separate by DOMAIN, which falls out of the identity contract for
     | free: the `$id` IS the request URL, so a tenant artifact's URL already
-    | carries the tenant's host. Declaration order is NOT match order — Laravel
-    | merges domain-constrained routes ahead of undomained ones, so giving a
-    | tier a domain is what makes it win, not listing it first.
+    | carries the tenant's host.
+    |
+    | ⚠️ DOMAINED TIERS ARE REGISTERED FIRST, and that is load-bearing. Laravel
+    | matches the first route that matches in INSERTION order, and an undomained
+    | route matches every host — so an undomained host tier registered first
+    | answers tenant subdomains too, with the tenant tier's middleware never
+    | running. Measured that way end-to-end before it was fixed. Declaration
+    | order in this file does not decide it; ServedTier::declared() does.
+    |
+    | ⚠️ A wildcard tenant pattern that is a SIBLING of the central host —
+    | `{tenant}.example.test` against a central `app.example.test` — matches the
+    | central host too, and the ordering above then hands central requests to the
+    | tenant tier. This package cannot detect that (it is handed a domain string
+    | and knowing a host's central domain is the tenancy vocabulary it must not
+    | have). Make the tenant pattern DEEPER than the central host.
     |
     */
     'served_tiers' => [],

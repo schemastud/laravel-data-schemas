@@ -58,28 +58,4 @@ class StructuralRung extends MigrationRung
 
         return $candidate;
     }
-
-    /**
-     * A type-appropriate empty value for an added field lacking a default.
-     *
-     * @param  array<string, mixed>  $prop
-     */
-    protected function emptyForType(array $prop): mixed
-    {
-        $type = $prop['type'] ?? null;
-        if (is_array($type)) {
-            // Prefer a non-null member so a nullable-or-X field gets a concrete empty.
-            $type = $type[0] === 'null' ? ($type[1] ?? 'null') : $type[0];
-        }
-
-        return match ($type) {
-            'string' => '',
-            'integer', 'number' => 0,
-            'boolean' => false,
-            'array' => [],
-            'object' => (object) [],
-            'null' => null,
-            default => null,
-        };
-    }
 }

@@ -65,4 +65,33 @@ abstract class MigrationRung implements Rung
     {
         return array_keys($request->to['properties'] ?? []);
     }
+
+    /**
+     * A type-appropriate empty value for a target property the source cannot
+     * supply — the filler a rung uses when it adds a declared field.
+     *
+     * Lifted onto the base (ticket 120) from three byte-identical copies in
+     * StructuralRung, DeclaredMappingRung and SourceProjectionRung, so a new
+     * rung inherits the one implementation by construction rather than by a
+     * reviewer noticing a fourth copy.
+     *
+     * @param  array<string, mixed>  $prop
+     */
+    protected function emptyForType(array $prop): mixed
+    {
+        $type = $prop['type'] ?? null;
+        if (is_array($type)) {
+            // Prefer a non-null member so a nullable-or-X field gets a concrete empty.
+            $type = $type[0] === 'null' ? ($type[1] ?? 'null') : $type[0];
+        }
+
+        return match ($type) {
+            'string' => '',
+            'integer', 'number' => 0,
+            'boolean' => false,
+            'array' => [],
+            'object' => (object) [],
+            default => null,
+        };
+    }
 }

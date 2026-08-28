@@ -127,28 +127,4 @@ class SourceProjectionRung extends MigrationRung
 
         return $value;
     }
-
-    /**
-     * A type-appropriate empty value for a target field lacking a default — the
-     * same mapping the structural rung uses, kept in sync deliberately.
-     *
-     * @param  array<string, mixed>  $prop
-     */
-    protected function emptyForType(array $prop): mixed
-    {
-        $type = $prop['type'] ?? null;
-        if (is_array($type)) {
-            $type = $type[0] === 'null' ? ($type[1] ?? 'null') : $type[0];
-        }
-
-        return match ($type) {
-            'string' => '',
-            'integer', 'number' => 0,
-            'boolean' => false,
-            'array' => [],
-            'object' => (object) [],
-            'null' => null,
-            default => null,
-        };
-    }
 }

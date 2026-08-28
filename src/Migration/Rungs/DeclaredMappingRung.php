@@ -90,24 +90,4 @@ class DeclaredMappingRung extends MigrationRung
 
         return $renames;
     }
-
-    /**
-     * @param  array<string, mixed>  $prop
-     */
-    protected function emptyForType(array $prop): mixed
-    {
-        $type = $prop['type'] ?? null;
-        if (is_array($type)) {
-            $type = $type[0] === 'null' ? ($type[1] ?? 'null') : $type[0];
-        }
-
-        return match ($type) {
-            'string' => '',
-            'integer', 'number' => 0,
-            'boolean' => false,
-            'array' => [],
-            'object' => (object) [],
-            default => null,
-        };
-    }
 }

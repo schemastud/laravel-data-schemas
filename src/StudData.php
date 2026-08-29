@@ -20,8 +20,17 @@ use Spatie\LaravelData\Data;
  * mechanical one — three of the five packages holding them do not currently require this package at
  * all, and two of those are `rushing/*` open foundations.
  *
- * Deliberately not `final`: `BeamData` and `ParticleData` extend it as reserved vocabulary for the
- * tiers below, and a host is free to add its own.
+ * Deliberately not `final`: `BeamData` extends it as reserved vocabulary for the tier below, and a host
+ * is free to add its own.
+ *
+ * ⚠️ This sentence used to name `ParticleData` alongside `BeamData`, and **`ParticleData` does not
+ * exist** — verified 2026-08-29 by three differently-shaped instruments: a filesystem read over the
+ * family package roots and every host's `app/` finds exactly one occurrence estate-wide, which is this
+ * sentence; `git log -S` names only the commit that wrote it; and a booted `class_exists()` plus a
+ * composer classmap scan at the flagship resolve nothing, with `BeamData` as a working control. It was
+ * `particle-contribution-seam` ticket 12 §A4's planned name, cited as real by tickets 10 and 11 during
+ * planning and never built. `not final` is still right — `BeamData` alone earns it — so the class is
+ * unchanged and only the claim is.
  */
 abstract class StudData extends Data implements ProvidesJsonSchema
 {

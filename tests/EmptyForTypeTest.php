@@ -7,11 +7,6 @@ use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Schemastud\DataSchemas\Migration\MigrationRequest;
 use Schemastud\DataSchemas\Migration\MigrationRung;
-use Schemastud\DataSchemas\Migration\Rungs\CustomTransformRung;
-use Schemastud\DataSchemas\Migration\Rungs\DeclaredMappingRung;
-use Schemastud\DataSchemas\Migration\Rungs\LlmTryRung;
-use Schemastud\DataSchemas\Migration\Rungs\SourceProjectionRung;
-use Schemastud\DataSchemas\Migration\Rungs\StructuralRung;
 
 /**
  * Ticket 120 — emptyForType() has ONE home, on MigrationRung, and lifting it
@@ -71,15 +66,31 @@ class EmptyForTypeTest extends TestCase
         $this->assertEquals((object) [], $this->call(['type' => 'object']));
     }
 
+    /**
+     * The ratchet against a copy of `emptyForType()` reappearing on a rung.
+     *
+     * The rung list is DISCOVERED, not spelled. An earlier form of this test named the five rungs as
+     * literals, which meant a SIXTH rung shipping its own copy — the exact regression the lift exists to
+     * prevent — was invisible to it: the copy would have to land inside one of the five already listed
+     * to be caught. Reading the directory is what makes the population the real one.
+     */
     public function test_the_helper_lives_only_on_the_base(): void
     {
-        $rungs = [
-            StructuralRung::class,
-            DeclaredMappingRung::class,
-            SourceProjectionRung::class,
-            CustomTransformRung::class,
-            LlmTryRung::class,
-        ];
+        $files = glob(__DIR__.'/../src/Migration/Rungs/*.php');
+
+        $rungs = [];
+
+        foreach ($files as $file) {
+            $class = 'Schemastud\\DataSchemas\\Migration\\Rungs\\'.basename($file, '.php');
+
+            if (class_exists($class) && is_subclass_of($class, MigrationRung::class)) {
+                $rungs[] = $class;
+            }
+        }
+
+        // A glob that matches nothing passes vacuously, which is the failure mode this whole file was
+        // written against. Five is the count at the time of writing; a sixth rung should RAISE this.
+        $this->assertGreaterThanOrEqual(5, count($rungs), 'No rungs discovered — the ratchet is vacuous.');
 
         foreach ($rungs as $rung) {
             $this->assertSame(

@@ -36,6 +36,39 @@ class DeclaredDefaultKeywordTest extends TestCase
             ->generate(new ReflectionClass(DeclaredDefaultsData::class))['properties'];
     }
 
+    /**
+     * The `$ref` arm of `defaultIsTypeConsistent()`, which had no assertion until now.
+     *
+     * `$anchor` is `?DefaultAnchorData $anchor = new DefaultAnchorData` — an OBJECT default. Spatie
+     * flattens it to an array (`array{uri, line}`) before it ever reaches `$defaultValue`, so
+     * `is_scalar() || is_array()` cannot refuse it: by the time the value is inspected it LOOKS like a
+     * legal array default. The only surviving signal that the property is an object is the `$ref` on
+     * its own schema, which is what the guard reads.
+     *
+     * Flipping that arm to `return true` left every other test in this file passing while `$anchor`
+     * silently published `{"$ref": …, "default": {"uri": "about:blank", "line": 1}}` — a nested-object
+     * default the generator's docblock spends a paragraph forbidding. This is that arm, pinned.
+     */
+    public function test_an_object_default_behind_a_ref_is_not_published(): void
+    {
+        foreach (['request', 'collapsed', 'llm_strict'] as $mode) {
+            $anchor = $this->properties($mode)['anchor'];
+
+            $this->assertArrayNotHasKey(
+                'default',
+                $anchor,
+                "Mode [{$mode}] published a default for an object-typed property."
+            );
+
+            // Guard the guard: if the property ever stops carrying a `$ref`, the assertion above starts
+            // passing for a reason that has nothing to do with the rule under test.
+            $this->assertTrue(
+                isset($anchor['$ref']) || isset($anchor['anyOf']) || isset($anchor['allOf']),
+                "Mode [{$mode}] no longer references `\$anchor` by \$ref, so this test proves nothing."
+            );
+        }
+    }
+
     public function test_a_declared_default_reaches_the_document_on_every_mode(): void
     {
         // The 58 the measurement counted, in miniature: today each of these migrates to a

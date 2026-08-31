@@ -207,6 +207,19 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
             by: self::class,
         );
 
+        // `schemas.lenses` — the same second act, and the paragraph above already named this defect
+        // without noticing it applied here too: "a registry nothing can enumerate is one nobody can
+        // discover a state was registered into". `LensRegistry` declares `#[IsRegistry(root:
+        // 'schemas.lenses')]`, implements the contract, is bound as an unconditional singleton in
+        // register() — and was in NO host's index. Measured 2026-08-31 by registry-kernel 73's
+        // `UnindexedRegistryAudit`: unindexed at **14 of 14** `~/Herd` roots, i.e. everywhere this
+        // package is installed. Nothing could see it, because declaring and describing are two acts and
+        // every gate in the estate asks about the first.
+        $this->app->make(RegistryIndex::class)->describe(
+            $this->app->make(LensRegistry::class),
+            by: self::class,
+        );
+
         // Contribute the resources:* projection pipelines (the open,
         // foundation-tier slice) into the shared registry. Guarded so the
         // package degrades gracefully if the pipeline-registry engine is absent.

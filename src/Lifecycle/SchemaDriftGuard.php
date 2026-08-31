@@ -111,6 +111,7 @@ class SchemaDriftGuard
         $checked = [];
         $drifted = [];
         $unfrozen = [];
+        $refreezable = [];
 
         foreach ($this->discover() as $class) {
             $checked[] = $class;
@@ -134,6 +135,31 @@ class SchemaDriftGuard
 
             $frozenFingerprint = SchemaFingerprint::of($frozen);
             if ($frozenFingerprint !== $current) {
+                // api-surface-coherence 122: one delta is provably inert and is NOT drift — added
+                // `default` keywords on a version-1 artifact. The rungs read `default` off the TARGET
+                // schema only, so a frozen artifact's copy is consumed only when that artifact is a
+                // migration target; version 1 cannot be one, because nothing precedes the first
+                // version. Both clauses are required, and the version clause is what expires the
+                // argument the moment the class gains a v2.
+                if (SchemaFingerprint::versionOf($id) === 1
+                    && SchemaFingerprint::inertDefaultAdditionOnly($frozen, $schema)) {
+                    $refreezable[] = new SchemaDriftEntry(
+                        class: $class,
+                        id: $id,
+                        frozenFingerprint: $frozenFingerprint,
+                        currentFingerprint: $current,
+                        reason: sprintf(
+                            '%s gained `default` keyword(s) only, on version 1 (%s). Inert: no migration '
+                            .'can read them, because nothing migrates INTO a first version. The frozen '
+                            .'artifact stays as written - nothing to re-freeze, nothing to bump.',
+                            $class,
+                            $id,
+                        ),
+                    );
+
+                    continue;
+                }
+
                 $drifted[] = new SchemaDriftEntry(
                     class: $class,
                     id: $id,
@@ -150,7 +176,7 @@ class SchemaDriftGuard
             }
         }
 
-        return new SchemaDriftResult($checked, $drifted, $unfrozen);
+        return new SchemaDriftResult($checked, $drifted, $unfrozen, $refreezable);
     }
 
     /**

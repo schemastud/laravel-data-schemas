@@ -5,7 +5,6 @@ namespace Schemastud\DataSchemas;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Rushing\PipelineRegistry\PipelineRegistry;
-use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
 use Schemastud\DataSchemas\Commands\SchemaCheckCommand;
 use Schemastud\DataSchemas\Commands\SchemaFreezeCommand;
@@ -168,20 +167,6 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
     {
         $this->mountSchemaDoor();
 
-        // DECLARING and INDEXING are two acts (registry-kernel 21 D1), and ticket 25 landed only the
-        // first for this adapter. The `#[IsRegistry]` on SchemaStrategiesRegistry names
-        // `schemas.strategies`; this is where that root actually becomes routable. Described from the
-        // owner's own boot — the package that owns the config key owns the describe (08 D6/D7).
-        $this->app->make(RegistryIndex::class)->describe(
-            $this->app->make(SchemaStrategiesRegistry::class),
-            by: self::class,
-        );
-
-        $this->app->make(RegistryIndex::class)->describe(
-            $this->app->make(SchemaIdParsersRegistry::class),
-            by: self::class,
-        );
-
         // Seed the projection registry with the ONE source this package has: the `auto_discover_types`
         // path scan `schemas:generate` has always done. Registered here rather than assumed, so that a
         // package contributing a second universe (beam's particle registry is the intended first) is
@@ -194,31 +179,6 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         if (! $projection->has('path-scan')) {
             $projection->register('path-scan', new PathScanSource, by: self::class);
         }
-
-        $this->app->make(RegistryIndex::class)->describe($projection, by: self::class);
-
-        // `schemas.fixtures` — described from the owner's own boot, like the three above (08 D6/D7).
-        // Without this the registry is bound and usable but INVISIBLE to `popcorn:registries`, which
-        // is the state `schemas.overlays` is in today: a registry nothing can enumerate is one nobody
-        // can discover a state was registered into. Resolving the singleton is not enough on its own —
-        // `BasicRegistry::for()` reads the declaration, it does not describe into the index.
-        $this->app->make(RegistryIndex::class)->describe(
-            $this->app->make(FixtureIndex::class),
-            by: self::class,
-        );
-
-        // `schemas.lenses` — the same second act, and the paragraph above already named this defect
-        // without noticing it applied here too: "a registry nothing can enumerate is one nobody can
-        // discover a state was registered into". `LensRegistry` declares `#[IsRegistry(root:
-        // 'schemas.lenses')]`, implements the contract, is bound as an unconditional singleton in
-        // register() — and was in NO host's index. Measured 2026-08-31 by registry-kernel 73's
-        // `UnindexedRegistryAudit`: unindexed at **14 of 14** `~/Herd` roots, i.e. everywhere this
-        // package is installed. Nothing could see it, because declaring and describing are two acts and
-        // every gate in the estate asks about the first.
-        $this->app->make(RegistryIndex::class)->describe(
-            $this->app->make(LensRegistry::class),
-            by: self::class,
-        );
 
         // Contribute the resources:* projection pipelines (the open,
         // foundation-tier slice) into the shared registry. Guarded so the

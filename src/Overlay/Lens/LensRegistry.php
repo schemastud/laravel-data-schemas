@@ -3,7 +3,9 @@
 namespace Schemastud\DataSchemas\Overlay\Lens;
 
 use InvalidArgumentException;
+use Rushing\Popcorn\Registries\Authorizer;
 use Rushing\Popcorn\Registries\BasicRegistry;
+use Rushing\Popcorn\Registries\Gated;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Key;
 use Rushing\Popcorn\Registries\OnDuplicate;
@@ -80,7 +82,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
         .'canonical it does not own.',
     order: 30,
 )]
-class LensRegistry implements Registry
+class LensRegistry implements Gated, Registry
 {
     private BasicRegistry $store;
 
@@ -280,5 +282,12 @@ class LensRegistry implements Registry
         $unfiltered->store = $this->store->unfiltered();
 
         return $unfiltered;
+    }
+
+    public function authorizeWith(?Authorizer $authorizer): static
+    {
+        $this->store->authorizeWith($authorizer);
+
+        return $this;
     }
 }

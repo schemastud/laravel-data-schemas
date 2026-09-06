@@ -290,6 +290,15 @@ class JsonSchemaGenerator implements Generator
         }
 
         unset($schema['nullable']);
+
+        if (isset($schema['anyOf'])) {
+            if (! in_array(['type' => 'null'], $schema['anyOf'], true)) {
+                $schema['anyOf'][] = ['type' => 'null'];
+            }
+
+            return $schema;
+        }
+
         $type = $schema['type'] ?? null;
 
         if ($type === null) {
@@ -312,7 +321,24 @@ class JsonSchemaGenerator implements Generator
 
         $schema = [];
 
-        if ($info['ref'] !== null) {
+        if (count($info['refs']) > 1 || ($info['refs'] !== [] && ($info['jsonTypes'] !== [] || $info['arrayItemRef'] !== null))) {
+            // A union admits any member, including overlapping object shapes. A single $ref
+            // would discard every other DTO; oneOf would incorrectly reject their overlap.
+            $schema['anyOf'] = array_map(fn (string $ref): array => ['$ref' => $ref], $info['refs']);
+            $types = array_values(array_unique($info['jsonTypes']));
+
+            if ($types !== []) {
+                $schema['anyOf'][] = ['type' => count($types) === 1 ? $types[0] : $types];
+            }
+
+            if ($info['arrayItemRef'] !== null) {
+                $schema['anyOf'][] = ['type' => 'array', 'items' => ['$ref' => $info['arrayItemRef']]];
+            }
+
+            if ($info['nullable']) {
+                $schema['anyOf'][] = ['type' => 'null'];
+            }
+        } elseif ($info['ref'] !== null) {
             $schema['$ref'] = $info['ref'];
             if ($info['nullable']) {
                 $schema['nullable'] = true;
@@ -424,7 +450,7 @@ class JsonSchemaGenerator implements Generator
      * (legacy inlined nodes) or an absolute versioned `$id` (opt-in addressable
      * nodes).
      *
-     * @return array{jsonTypes: string[], ref: ?string, arrayItemRef: ?string, nullable: bool, optional: bool, lazy: bool, format: ?string}
+     * @return array{jsonTypes: string[], ref: ?string, refs: list<string>, arrayItemRef: ?string, nullable: bool, optional: bool, lazy: bool, format: ?string}
      */
     protected function analyzeType(ReflectionProperty $property): array
     {
@@ -436,7 +462,7 @@ class JsonSchemaGenerator implements Generator
         };
 
         $jsonTypes = [];
-        $ref = null;
+        $refs = [];
         $arrayItemRef = null;
         $nullable = false;
         $optional = false;
@@ -486,13 +512,13 @@ class JsonSchemaGenerator implements Generator
 
             // Class-typed member.
             if (is_subclass_of($name, Data::class)) {
-                $ref = $this->ensureDef(new ReflectionClass($name));
+                $refs[] = $this->ensureDef(new ReflectionClass($name));
 
                 continue;
             }
 
             if (is_subclass_of($name, BackedEnum::class)) {
-                $ref = $this->ensureEnumDef($name);
+                $refs[] = $this->ensureEnumDef($name);
 
                 continue;
             }
@@ -533,7 +559,8 @@ class JsonSchemaGenerator implements Generator
 
         return [
             'jsonTypes' => $jsonTypes,
-            'ref' => $ref,
+            'ref' => $refs[0] ?? null,
+            'refs' => array_values(array_unique($refs)),
             'arrayItemRef' => $arrayItemRef,
             'nullable' => $nullable,
             'optional' => $optional,

@@ -17,8 +17,7 @@ use Schemastud\JsonNs\NamespaceUri;
  *
  * ## Parsers claim, they do not transform
  *
- * {@see handles()} is asked first and the FIRST claimer wins — the arity is
- * {@see \Rushing\Popcorn\Registries\RegistryArity::PickOne}, not a pipeline. A ref has exactly one
+ * {@see handles()} is asked first and the first claimer wins. A ref has exactly one
  * grammar; two parsers rewriting the same string in sequence would be a second grammar nobody
  * declared.
  *

@@ -6,7 +6,6 @@ use Rushing\Popcorn\Laravel\Registries\ConfigRegistry;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Key;
 use Rushing\Popcorn\Registries\OnDuplicate;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryKey;
 
 /**
@@ -34,17 +33,15 @@ use Rushing\Popcorn\Registries\RegistryKey;
  * dedupe guard exactly {@see OnDuplicate::Supersede} — the same idempotence, spelled once in the kernel
  * instead of five times across three vendors.
  *
- * `RunAll`, because a read engages every entry: the generator walks the whole pipeline in order and each
+ * The generator walks the whole pipeline in order and each
  * strategy contributes keywords to the schema built so far. Registration order is the config array's
  * order, which is the pipeline's order — the ordering guarantee is load-bearing here, not incidental.
  */
 #[IsRegistry(
     root: 'schemas.strategies',
-    of: 'SchemaStrategy implementations — the ordered property pipeline each reflected property is walked through, every one free to contribute keywords to the schema so far',
-    arity: RegistryArity::RunAll,
     entryType: 'class-string<'.SchemaStrategy::class.'>',
     onDuplicate: OnDuplicate::Supersede,
-    note: 'Storage is `config(\'data-schemas.strategies\')`, a LIST of class-strings appended to by five packages across three vendors from their own providers. Keys are derived per entry via Key::fromClass(); the config path is unchanged and every existing consumer still reads the plain list.',
+    description: 'SchemaStrategy implementations — the ordered property pipeline each reflected property is walked through, every one free to contribute keywords to the schema so far. Storage is `config(\'data-schemas.strategies\')`, a LIST of class-strings appended to by five packages across three vendors from their own providers. Keys are derived per entry via Key::fromClass(); the config path is unchanged and every existing consumer still reads the plain list.',
 )]
 class SchemaStrategiesRegistry extends ConfigRegistry
 {

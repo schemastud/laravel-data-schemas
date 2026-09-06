@@ -6,7 +6,6 @@ use Rushing\Popcorn\Laravel\Registries\ConfigRegistry;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Key;
 use Rushing\Popcorn\Registries\OnDuplicate;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryKey;
 
 /**
@@ -20,7 +19,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
  * {@see RelativeSchemaIdParser}, which is {@see SchemaIdResolver}'s floor rather than an entry here,
  * so an appended parser is always consulted before the default and never has to out-order it.
  *
- * `PickOne`, because a ref has exactly one grammar. The read asks each registrant `handles()` in
+ * A ref has exactly one grammar. The read asks each registrant `handles()` in
  * registration order and stops at the first claimer — it is not a pipeline, and two parsers
  * rewriting the same string in turn would be a grammar nobody declared.
  *
@@ -39,11 +38,9 @@ use Rushing\Popcorn\Registries\RegistryKey;
  */
 #[IsRegistry(
     root: 'schemas.id-parsers',
-    of: 'SchemaIdParser implementations — how a package\'s schema REFS parse into a resolved namespace URI, given the host\'s declared authority',
-    arity: RegistryArity::PickOne,
     entryType: 'class-string<'.SchemaIdParser::class.'>',
     onDuplicate: OnDuplicate::Supersede,
-    note: 'Storage is `config(\'data-schemas.id_parsers\')`, a LIST of class-strings. Ships empty; the package\'s own absolute/relative grammar is SchemaIdResolver\'s unshadowable floor, not an entry. First claimer by `handles()` wins, in registration order.',
+    description: 'SchemaIdParser implementations — how a package\'s schema REFS parse into a resolved namespace URI, given the host\'s declared authority. Storage is `config(\'data-schemas.id_parsers\')`, a LIST of class-strings. Ships empty; the package\'s own absolute/relative grammar is SchemaIdResolver\'s unshadowable floor, not an entry. First claimer by `handles()` wins, in registration order.',
 )]
 class SchemaIdParsersRegistry extends ConfigRegistry
 {

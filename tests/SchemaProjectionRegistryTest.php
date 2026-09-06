@@ -7,7 +7,6 @@ use Orchestra\Testbench\TestCase;
 use ReflectionClass;
 use Rushing\Popcorn\Laravel\PopcornServiceProvider;
 use Rushing\Popcorn\Registries\IsRegistry;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
 use Schemastud\DataSchemas\Sources\PathScanSource;
@@ -50,21 +49,6 @@ class SchemaProjectionRegistryTest extends TestCase
 
         $this->assertNotNull($declaration);
         $this->assertSame('schemas.projection', $declaration->root);
-    }
-
-    /**
-     * A two-step read, so a LIST — pick a source, then enumerate that source's classes. The same
-     * shape `PipelineRegistry` (pick a pipeline, compose its stages) and `ResourceRenderingRegistry`
-     * (pick a resource, run its renderings) already declare.
-     */
-    public function test_the_arity_is_the_two_step_read_and_not_a_bare_case(): void
-    {
-        $declaration = IsRegistry::of(SchemaProjectionRegistry::class);
-
-        $this->assertSame(
-            [RegistryArity::PickOne, RegistryArity::RunAll],
-            $declaration->arity,
-        );
     }
 
     public function test_the_package_ships_its_path_scan_source_registered(): void

@@ -10,7 +10,6 @@ use Rushing\Popcorn\Registries\Gated;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\OnDuplicate;
 use Rushing\Popcorn\Registries\Registry;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryKey;
 
 /**
@@ -30,16 +29,10 @@ use Rushing\Popcorn\Registries\RegistryKey;
  * private vocabulary; eagerly-resolved class-strings, which are the boot-order trap). The short version
  * is that a source is a QUESTION asked at read time, so registration order cannot become truth.
  *
- * ## Why the arity is a LIST
+ * ## Reading sources
  *
- * The read is two steps: PICK a source by key, then ENUMERATE that source's classes. The classes are not
- * addressable entries of this registry — they have no keys here, and the same class legitimately appears
- * in two sources (a particle IS a Data class under a scanned path) — so the second step is a LEVEL OF
- * THE READ, not a nested root. Exactly the shape `PipelineRegistry` declares for
- * `[PickOne, ComposeMany]` and `ResourceRenderingRegistry` for pick-a-resource-then-run-its-renderings.
- *
- * {@see classes()} is the union across every source — the cross-cutting read a consumer actually wants —
- * and it is sugar over the declared two-step, not a third arity: it walks the registry's own root and asks each.
+ * Select a source by key and enumerate its classes, or use {@see classes()} for the union across
+ * every source. Classes have no keys here and may appear in multiple sources.
  *
  * Which is why this class also IMPLEMENTS {@see SchemaSource}: the union of sources is itself one way of
  * knowing which classes a host projects, so `schemas:generate` takes a `SchemaSource` and is handed either
@@ -56,11 +49,9 @@ use Rushing\Popcorn\Registries\RegistryKey;
  */
 #[IsRegistry(
     root: 'schemas.projection',
-    of: 'SchemaSource implementations — the ways this host knows which classes it projects JSON Schemas from, so that "where do the schemas come from" is one enumerable answer instead of a scan hard-coded in one command',
-    arity: [RegistryArity::PickOne, RegistryArity::RunAll],
     entryType: SchemaSource::class,
     onDuplicate: OnDuplicate::Supersede,
-    note: 'Entries are SOURCES, asked at READ time — never paths (one source\'s private vocabulary) and never eagerly-resolved class-strings (the boot-order trap: a source registered before what it enumerates is populated would contribute an empty list, silently, forever). The read is two steps — pick a source, enumerate its classes — and the classes are not addressable here, which is why the second step is a level of the arity and not a nested root. Ships one entry, `path-scan`, wrapping the `auto_discover_types` walk `schemas:generate` has always done.',
+    description: 'Sources of classes to project as JSON Schemas. Sources are queried at read time so registration does not freeze an incomplete class list. Select a source by key or call classes() for the union. The built-in path-scan source uses auto_discover_types.',
 )]
 class SchemaProjectionRegistry implements Gated, Registry, SchemaSource
 {

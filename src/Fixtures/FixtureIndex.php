@@ -9,7 +9,6 @@ use Rushing\Popcorn\Registries\Nested;
 use Rushing\Popcorn\Registries\OnDuplicate;
 use Rushing\Popcorn\Registries\Optionality;
 use Rushing\Popcorn\Registries\Registry;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryKey;
 use Rushing\Popcorn\Registries\RegistryNode;
 use Rushing\Popcorn\Registries\Superseded;
@@ -34,8 +33,7 @@ use Rushing\Popcorn\Registries\Superseded;
  * | states — child nodes | yes | the order the CALLER chains them |
  * | hooks — a positional list on the parent | no | REGISTRATION order |
  *
- * That is what `arity: [PickOne, ComposeMany]` describes: `PickOne` selects the shape node, then
- * `ComposeMany` composes what it holds.
+ * Select the shape node, then compose the fixtures it holds.
  *
  * ## `Supersede` is correct here, and it is not a shrug
  *
@@ -67,17 +65,10 @@ use Rushing\Popcorn\Registries\Superseded;
  */
 #[IsRegistry(
     root: 'schemas.fixtures',
-    of: 'named fixture states per declared shape, plus that shape\'s positional before/after hooks',
-    arity: [RegistryArity::PickOne, RegistryArity::ComposeMany],
     entryType: 'mixed',
     onDuplicate: OnDuplicate::Supersede,
     optionality: Optionality::Optional,
-    note: 'Two levels of ONE keyspace. `schemas.fixtures.{shape}` holds the defaults and the ordered '
-        .'hook list; `schemas.fixtures.{shape}.{state}` is one named state. States are addressable '
-        .'because a caller names them and composes them in CALL order; hooks are positional and '
-        .'compose in REGISTRATION order, which is why they are not siblings. A shape with no shorter '
-        .'declared name keys by `ClassKey`, which carries the namespace so two same-basename classes '
-        .'cannot silently supersede one another.',
+    description: 'named fixture states per declared shape, plus that shape\'s positional before/after hooks. Two levels of ONE keyspace. `schemas.fixtures.{shape}` holds the defaults and the ordered hook list; `schemas.fixtures.{shape}.{state}` is one named state. States are addressable because a caller names them and composes them in CALL order; hooks are positional and compose in REGISTRATION order, which is why they are not siblings. A shape with no shorter declared name keys by `ClassKey`, which carries the namespace so two same-basename classes cannot silently supersede one another.',
 )]
 class FixtureIndex implements Nested, Registry
 {

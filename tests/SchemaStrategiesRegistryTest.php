@@ -5,7 +5,6 @@ namespace Schemastud\DataSchemas\Tests;
 use Orchestra\Testbench\TestCase;
 use Rushing\Popcorn\Laravel\PopcornServiceProvider;
 use Rushing\Popcorn\Registries\IsRegistry;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
 use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
@@ -48,7 +47,6 @@ class SchemaStrategiesRegistryTest extends TestCase
 
         $this->assertNotNull($declaration);
         $this->assertSame('schemas.strategies', $declaration->root);
-        $this->assertSame([RegistryArity::RunAll], $declaration->arity);
     }
 
     /**

@@ -5,7 +5,6 @@ namespace Schemastud\DataSchemas\Tests;
 use Orchestra\Testbench\TestCase;
 use Rushing\Popcorn\Laravel\PopcornServiceProvider;
 use Rushing\Popcorn\Registries\IsRegistry;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryIndex;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 use Schemastud\DataSchemas\Ids\RelativeSchemaIdParser;
@@ -46,7 +45,6 @@ class SchemaIdParsersRegistryTest extends TestCase
 
         $this->assertNotNull($declaration);
         $this->assertSame('schemas.id-parsers', $declaration->root);
-        $this->assertSame([RegistryArity::PickOne], $declaration->arity);
     }
 
     public function test_it_is_described_into_the_shared_index(): void

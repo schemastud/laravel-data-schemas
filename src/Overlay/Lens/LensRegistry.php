@@ -10,7 +10,6 @@ use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Key;
 use Rushing\Popcorn\Registries\OnDuplicate;
 use Rushing\Popcorn\Registries\Registry;
-use Rushing\Popcorn\Registries\RegistryArity;
 use Rushing\Popcorn\Registries\RegistryKey;
 
 // The registry of declared lenses — the answer to "which lenses exist in this
@@ -69,17 +68,9 @@ use Rushing\Popcorn\Registries\RegistryKey;
 // @implements Registry<LensRegistration>
 #[IsRegistry(
     root: 'schemas.lenses',
-    of: 'declared lenses (canonical ↔ rendering, law-checked), each tiered host-applied or engine-authoritative',
-    arity: RegistryArity::RunAll,
     entryType: LensRegistration::class,
     onDuplicate: OnDuplicate::Reject,
-    note: 'Keys are dotted `vendor.lens-name` — the estate keyspace, not a slashed dialect: `/` is not a '
-        .'Key character, and diverging would have cost a second key type to preserve one punctuation '
-        .'mark. Reject is declared, not inherited, and this class is the estate\'s argument for the policy '
-        .'existing at all: a silent last-write-wins is how a registry of three lenses reports two. RunAll '
-        .'because the product is DISCOVERABILITY rather than dispatch — even forId() returns every lens '
-        .'over an @id, since picking would mean this registry deciding which host is right about a '
-        .'canonical it does not own.',
+    description: 'Declared, law-checked lenses between canonical and rendering shapes, tiered as host-applied or engine-authoritative. Dotted vendor.lens-name keys must be unique. forId() returns every lens for an ID so callers can discover all available interpretations.',
     order: 30,
 )]
 class LensRegistry implements Gated, Registry

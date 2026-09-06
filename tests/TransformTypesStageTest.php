@@ -164,4 +164,54 @@ class TransformTypesStageTest extends TestCase
             $context->log,
         );
     }
+
+    public function test_qualified_sibling_rewriting_preserves_the_selected_declarations_identity(): void
+    {
+        file_put_contents($this->source, <<<'TS'
+        namespace Splicewire {
+        namespace Beam {
+        export type EventData = {
+        calendarId: string,
+        };
+        export type FeedData = {
+        event: Splicewire.Beam.EventData,
+        };
+        }
+        namespace Tower {
+        export type EventData = {
+        cell_id: string,
+        };
+        }
+        }
+        TS);
+
+        $context = $this->emit(['Splicewire.Beam.FeedData', 'Splicewire.Tower.EventData']);
+        $out = $context->files['types/test.d.ts'];
+
+        $this->assertStringContainsString('cell_id: string,', $out);
+        $this->assertStringContainsString('event: Splicewire.Beam.EventData,', $out);
+        $this->assertContains(
+            'TransformTypesStage: DANGLING ref [Splicewire.Beam.EventData] — add its type to the [types] slice',
+            $context->log,
+        );
+
+        $context = $this->emit(['Splicewire.Beam.FeedData', 'Splicewire.Beam.EventData']);
+        $out = $context->files['types/test.d.ts'];
+
+        $this->assertStringContainsString('calendarId: string,', $out);
+        $this->assertStringContainsString('event: EventData,', $out);
+        $this->assertStringNotContainsString('Splicewire.Beam.EventData', $out);
+        $this->assertCount(2, $context->log);
+    }
+
+    public function test_the_banner_identifies_the_generated_typescript_projection(): void
+    {
+        $out = $this->emit(['ApiTokenData', 'TokenProvenance'])->files['types/test.d.ts'];
+
+        $this->assertStringStartsWith(
+            "// GENERATED — do not edit by hand.\n"
+            ."// Projected from generated TypeScript via resources:test.\n\n",
+            $out,
+        );
+    }
 }

@@ -51,7 +51,7 @@ class TransformTypesStage
         $haystack = file_get_contents($source);
         $declarations = $this->index($haystack);
         $extracted = [];
-        $names = [];
+        $selectedNames = [];
 
         foreach ($types as $type) {
             $candidates = $this->candidatesFor($declarations, $type);
@@ -84,7 +84,7 @@ class TransformTypesStage
             }
 
             $extracted[] = $slice;
-            $names[] = $candidates[0]['name'];
+            $selectedNames[$candidates[0]['qualified']] = $candidates[0]['name'];
             $context->note("TransformTypesStage: extracted {$candidates[0]['qualified']}");
         }
 
@@ -105,14 +105,14 @@ class TransformTypesStage
         // Reach before precision (ecosystem AGENTS.md) — an audit that parses for a construct
         // the estate has left behind reads as thorough exactly where it is blind.
         $body = implode("\n\n", $extracted);
-        $body = $this->rewriteSiblingRefs($body, $names);
+        $body = $this->rewriteSiblingRefs($body, $selectedNames);
 
         foreach ($this->danglingRefs($body) as $ref) {
             $context->note("TransformTypesStage: DANGLING ref [{$ref}] — add its type to the [types] slice");
         }
 
-        $banner = "// GENERATED — {$scope}/_resources — do not edit by hand.\n"
-            ."// Projected from app/Data/* via the resources:{$scope} pipeline.\n\n";
+        $banner = "// GENERATED — do not edit by hand.\n"
+            ."// Projected from generated TypeScript via resources:{$scope}.\n\n";
 
         $context->put($emit, $banner.$body."\n");
 
@@ -120,18 +120,16 @@ class TransformTypesStage
     }
 
     /**
-     * Rewrite `<Root>.<Ns...>.<Name>` references to the bare `<Name>` for every `<Name>` that
-     * was itself sliced into this bundle, so the flat module resolves internally. The root is
-     * any capitalised namespace segment — `App`, `Splicewire`, `Schemastud`, whatever the
-     * transformer emitted — never a hard-coded one.
+     * Rewrite only references to the selected declarations. A different namespace's type
+     * with the same short name remains qualified so the dangling-ref note can expose it.
      *
-     * @param  array<int, string>  $names  bare names extracted into this slice
+     * @param  array<string, string>  $selectedNames  qualified declaration names mapped to emitted bare names
      */
-    private function rewriteSiblingRefs(string $body, array $names): string
+    private function rewriteSiblingRefs(string $body, array $selectedNames): string
     {
-        foreach ($names as $name) {
+        foreach ($selectedNames as $qualified => $name) {
             $body = preg_replace(
-                '/\b[A-Z]\w*(?:\.[A-Za-z_]\w*)*\.'.preg_quote($name, '/').'\b/',
+                '/(?<![\w.])'.preg_quote($qualified, '/').'(?![\w.])/',
                 $name,
                 $body
             );

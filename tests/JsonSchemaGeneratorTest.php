@@ -51,8 +51,7 @@ class JsonSchemaGeneratorTest extends TestCase
                     'x-optional' => true,
                 ],
                 'user' => [
-                    '$ref' => '#/$defs/UserData',
-                    'nullable' => true,
+                    'anyOf' => [['$ref' => '#/$defs/UserData'], ['type' => 'null']],
                     'readOnly' => true,
                     'x-lazy' => true,
                 ],
@@ -115,8 +114,8 @@ class JsonSchemaGeneratorTest extends TestCase
         $schema = $this->generate(SampleData::class);
         $user = $schema['properties']['user'];
 
-        $this->assertSame('#/$defs/UserData', $user['$ref']);
-        $this->assertTrue($user['nullable']);
+        $this->assertSame([['$ref' => '#/$defs/UserData'], ['type' => 'null']], $user['anyOf']);
+        $this->assertArrayNotHasKey('nullable', $user);
         $this->assertTrue($user['readOnly']);
         $this->assertTrue($user['x-lazy']);
         $this->assertNotContains('user', $schema['required']);

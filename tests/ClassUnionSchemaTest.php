@@ -21,7 +21,7 @@ it('keeps optional lazy and nullable semantics around a DTO union', function () 
     expect($schema['required'])->toContain('choice', 'nullable')->not->toContain('optional', 'lazy');
     expect($schema['properties']['nullable']['anyOf'])->toContain(['type' => 'null']);
     expect($schema['properties']['single'])->toBe([
-        '$ref' => '#/$defs/UnionLeftData', 'nullable' => true, 'readOnly' => true, 'x-lazy' => true,
+        'anyOf' => [['$ref' => '#/$defs/UnionLeftData'], ['type' => 'null']], 'readOnly' => true, 'x-lazy' => true,
     ]);
 });
 

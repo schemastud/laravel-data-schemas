@@ -94,7 +94,7 @@ class SchemaVersioningTest extends TestCase
         $schema = $this->generate(SampleData::class);
 
         $this->assertSame('SampleData', $schema['$id']);
-        $this->assertSame('#/$defs/UserData', $schema['properties']['user']['$ref']);
+        $this->assertSame('#/$defs/UserData', $schema['properties']['user']['anyOf'][0]['$ref']);
         $this->assertArrayHasKey('UserData', $schema['$defs']);
         $this->assertSame('#/$defs/UserData', $schema['properties']['collaborators']['items']['$ref']);
     }

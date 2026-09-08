@@ -5,7 +5,7 @@ namespace Schemastud\DataSchemas\Strategies;
 use Rushing\Popcorn\Laravel\Registries\ConfigRegistry;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Key;
-use Rushing\Popcorn\Registries\OnDuplicate;
+use Rushing\Popcorn\Registries\OnKeyDuplicate;
 use Rushing\Popcorn\Registries\RegistryKey;
 
 /**
@@ -30,7 +30,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
  * Two live properties fall out of it and are worth naming. Ordinals were the alternative and would
  * renumber every key the first time a package appended, which is the one thing this array does
  * constantly. And a class-derived key makes the estate's hand-rolled `in_array($strategy, $strategies)`
- * dedupe guard exactly {@see OnDuplicate::Supersede} — the same idempotence, spelled once in the kernel
+ * dedupe guard exactly {@see OnKeyDuplicate::Supersede} — the same idempotence, spelled once in the kernel
  * instead of five times across three vendors.
  *
  * The generator walks the whole pipeline in order and each
@@ -40,7 +40,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
 #[IsRegistry(
     root: 'schemas.strategies',
     entryType: 'class-string<'.SchemaStrategy::class.'>',
-    onDuplicate: OnDuplicate::Supersede,
+    onKeyDuplicate: OnKeyDuplicate::Supersede,
     description: 'SchemaStrategy implementations — the ordered property pipeline each reflected property is walked through, every one free to contribute keywords to the schema so far. Storage is `config(\'data-schemas.strategies\')`, a LIST of class-strings appended to by five packages across three vendors from their own providers. Keys are derived per entry via Key::fromClass(); the config path is unchanged and every existing consumer still reads the plain list.',
 )]
 class SchemaStrategiesRegistry extends ConfigRegistry

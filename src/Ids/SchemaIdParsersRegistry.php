@@ -5,7 +5,7 @@ namespace Schemastud\DataSchemas\Ids;
 use Rushing\Popcorn\Laravel\Registries\ConfigRegistry;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Key;
-use Rushing\Popcorn\Registries\OnDuplicate;
+use Rushing\Popcorn\Registries\OnKeyDuplicate;
 use Rushing\Popcorn\Registries\RegistryKey;
 
 /**
@@ -26,7 +26,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
  * Keys are derived per entry via {@see Key::fromClass()}, for the reason spelled out at length on the
  * strategies registry: the config value is a list, so `ConfigRegistry::keyFor()` refuses to invent
  * keys for it, and an ordinal would renumber every key the first time somebody appends.
- * `OnDuplicate::Supersede` makes the estate's habitual `in_array($parser, $parsers)` append guard
+ * `OnKeyDuplicate::Supersede` makes the estate's habitual `in_array($parser, $parsers)` append guard
  * the kernel's idempotence rather than a hand-rolled one per registrant.
  *
  * ⚠️ One consequence of shipping empty, which the strategies registry never exhibits because it ships
@@ -39,7 +39,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
 #[IsRegistry(
     root: 'schemas.id-parsers',
     entryType: 'class-string<'.SchemaIdParser::class.'>',
-    onDuplicate: OnDuplicate::Supersede,
+    onKeyDuplicate: OnKeyDuplicate::Supersede,
     description: 'SchemaIdParser implementations — how a package\'s schema REFS parse into a resolved namespace URI, given the host\'s declared authority. Storage is `config(\'data-schemas.id_parsers\')`, a LIST of class-strings. Ships empty; the package\'s own absolute/relative grammar is SchemaIdResolver\'s unshadowable floor, not an entry. First claimer by `handles()` wins, in registration order.',
 )]
 class SchemaIdParsersRegistry extends ConfigRegistry

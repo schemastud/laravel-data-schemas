@@ -8,7 +8,7 @@ use Rushing\Popcorn\Registries\Authorizer;
 use Rushing\Popcorn\Registries\BasicRegistry;
 use Rushing\Popcorn\Registries\Gated;
 use Rushing\Popcorn\Registries\IsRegistry;
-use Rushing\Popcorn\Registries\OnDuplicate;
+use Rushing\Popcorn\Registries\OnKeyDuplicate;
 use Rushing\Popcorn\Registries\Registry;
 use Rushing\Popcorn\Registries\RegistryKey;
 
@@ -50,7 +50,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
 #[IsRegistry(
     root: 'schemas.projection',
     entryType: SchemaSource::class,
-    onDuplicate: OnDuplicate::Supersede,
+    onKeyDuplicate: OnKeyDuplicate::Supersede,
     description: 'Sources of classes to project as JSON Schemas. Sources are queried at read time so registration does not freeze an incomplete class list. Select a source by key or call classes() for the union. The built-in path-scan source uses auto_discover_types.',
 )]
 class SchemaProjectionRegistry implements Gated, Registry, SchemaSource
@@ -144,7 +144,7 @@ class SchemaProjectionRegistry implements Gated, Registry, SchemaSource
      * about is generated once, by whichever source is registered first, and the union's order is the
      * order the command reports in.
      *
-     * It does not contradict `onDuplicate: Supersede`, though the two read alike at a glance. They
+     * It does not contradict `onKeyDuplicate: Supersede`, though the two read alike at a glance. They
      * govern different collisions:
      *
      * - **Supersede is about a KEY.** Re-registering `path-scan` REPLACES the source there — last

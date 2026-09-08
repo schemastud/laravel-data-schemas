@@ -8,7 +8,7 @@ use Rushing\Popcorn\Registries\BasicRegistry;
 use Rushing\Popcorn\Registries\Gated;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Key;
-use Rushing\Popcorn\Registries\OnDuplicate;
+use Rushing\Popcorn\Registries\OnKeyDuplicate;
 use Rushing\Popcorn\Registries\Registry;
 use Rushing\Popcorn\Registries\RegistryKey;
 
@@ -69,7 +69,7 @@ use Rushing\Popcorn\Registries\RegistryKey;
 #[IsRegistry(
     root: 'schemas.lenses',
     entryType: LensRegistration::class,
-    onDuplicate: OnDuplicate::Reject,
+    onKeyDuplicate: OnKeyDuplicate::Reject,
     description: 'Declared, law-checked lenses between canonical and rendering shapes, tiered as host-applied or engine-authoritative. Dotted vendor.lens-name keys must be unique. forId() returns every lens for an ID so callers can discover all available interpretations.',
     order: 30,
 )]

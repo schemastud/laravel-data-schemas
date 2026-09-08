@@ -114,7 +114,7 @@ class SchemaProjectionRegistryTest extends TestCase
      * identity, because that is the user-visible consequence — it is the order `schemas:generate`
      * generates and reports in.
      *
-     * This does NOT contradict `onDuplicate: Supersede`. The two rules are about different things:
+     * This does NOT contradict `onKeyDuplicate: Supersede`. The two rules are about different things:
      * Supersede governs one KEY re-registered (a host replacing the shipped `path-scan` with a
      * narrowed one — last registration wins the KEY), first-wins governs one CLASS named by two
      * DIFFERENT keys (no key is being replaced; the class simply already has a slot).

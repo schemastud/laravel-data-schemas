@@ -275,7 +275,7 @@ class JsonSchemaGenerator implements Generator
     }
 
     /**
-     * Make a property schema accept null, for strict LLM mode.
+     * Make a property schema accept null.
      *
      * @param  array<string, mixed>  $schema
      * @return array<string, mixed>
@@ -315,7 +315,7 @@ class JsonSchemaGenerator implements Generator
         if ($info['ref'] !== null) {
             $schema['$ref'] = $info['ref'];
             if ($info['nullable']) {
-                $schema['nullable'] = true;
+                $schema = $this->makeNullable($schema);
             }
         } elseif ($info['arrayItemRef'] !== null) {
             $schema['type'] = 'array';

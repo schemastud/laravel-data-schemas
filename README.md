@@ -305,6 +305,10 @@ The MIT License (MIT). Please see [License File](LICENSE.md) for more informatio
 - Inspired by [spatie/laravel-typescript-transformer](https://github.com/spatie/laravel-typescript-transformer)
 - Built for the [Spatie Laravel Data](https://github.com/spatie/laravel-data) ecosystem
 
+## Strict referenced properties
+
+The `forLlmStrict()` projection wraps an annotated `$ref` in a single-branch `anyOf`, retaining annotations on the outer property. OpenAI rejects annotations directly beside `$ref`; the equivalent wrapper preserves referenced Data validation and nonnullability. A reference already carrying a sibling `anyOf` is explicitly refused in strict mode rather than dropping its existing constraint. Ordinary schema modes retain their original reference and annotations. A validator-backed regression checks valid, null and malformed values alongside the provider restriction.
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.

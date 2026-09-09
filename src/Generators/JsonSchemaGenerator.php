@@ -257,8 +257,20 @@ class JsonSchemaGenerator implements Generator
                     }
                 }
 
+                if (isset($propSchema['$ref']) && array_key_exists('anyOf', $propSchema)) {
+                    throw new \LogicException('Strict schema cannot wrap a reference with an existing anyOf: '.$name);
+                }
+
                 if (! in_array($name, $required, true)) {
                     $propSchema = $this->makeNullable($propSchema);
+                }
+
+                // A strict provider rejects annotations beside $ref. Preserve them on an
+                // equivalent single-branch anyOf; the referenced Data contract stays exact.
+                if (isset($propSchema['$ref']) && count($propSchema) > 1) {
+                    $ref = $propSchema['$ref'];
+                    unset($propSchema['$ref']);
+                    $propSchema = ['anyOf' => [['$ref' => $ref]]] + $propSchema;
                 }
 
                 $schema['properties'][$name] = $propSchema;

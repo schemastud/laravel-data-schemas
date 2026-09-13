@@ -6,6 +6,7 @@ use BackedEnum;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionProperty;
+use Schemastud\DataSchemas\Attributes\ExistsInRegistry;
 use Spatie\LaravelData\Attributes\Validation\Between;
 use Spatie\LaravelData\Attributes\Validation\Email;
 use Spatie\LaravelData\Attributes\Validation\Enum;
@@ -42,6 +43,24 @@ class ValidationAttributeStrategy implements SchemaStrategy
                 $result = $customMapping($instance);
                 if (is_array($result)) {
                     $schema = array_merge($schema, $result);
+                }
+
+                continue;
+            }
+
+            if ($instance instanceof ExistsInRegistry) {
+                $values = $instance->constraint()->values();
+
+                if ($this->schemaHasType($schema, 'null')) {
+                    $values[] = null;
+                }
+
+                if ($values === []) {
+                    // OpenAPI requires a non-empty enum. Preserve the empty vocabulary as an
+                    // impossible schema rather than accidentally publishing an unrestricted string.
+                    $schema['not'] = new \stdClass;
+                } else {
+                    $schema['enum'] = $values;
                 }
 
                 continue;

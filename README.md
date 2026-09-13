@@ -194,6 +194,35 @@ The package automatically maps Spatie validation attributes to JSON Schema const
 | `#[Enum(StatusEnum::class)]` | `enum: [values]` |
 | `#[Nullable]` | `type: ["string", "null"]` |
 
+## Registry values
+
+Declare a live registry constraint on a Data property to use the same membership rule for Spatie
+validation and generated JSON Schema:
+
+```php
+use Schemastud\DataSchemas\Attributes\ExistsInRegistry;
+use Spatie\LaravelData\Data;
+
+class ExportData extends Data
+{
+    public function __construct(
+        #[ExistsInRegistry('app.formats', relative: true)]
+        public string $format,
+    ) {}
+}
+```
+
+For registrations `app.formats.json` and `app.formats.markdown`, validation accepts `json` and
+`markdown`, and the schema publishes those strings as its `enum`. Omit `relative: true` to use fully
+qualified keys. A domain attribute can extend `ExistsInRegistry` and override `constraint()` to
+return a Popcorn rule with a subset predicate; both projections use that rule.
+
+Enumeration honors current registry visibility and is recomputed during generation. Publish under
+the intended documentation audience; a saved enum is a snapshot, not an authorization policy.
+An empty vocabulary emits `not: {}` (no valid value), while a nullable field still admits `null`.
+Registry rules returned only by a Data class's `rules()` method continue to validate, but require the
+attribute declaration above to project their enum into schemas.
+
 ## Custom Attributes
 
 ### Description

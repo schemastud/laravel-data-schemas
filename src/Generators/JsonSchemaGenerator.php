@@ -294,6 +294,16 @@ class JsonSchemaGenerator implements Generator
      */
     protected function makeNullable(array $schema): array
     {
+        if (isset($schema['not'])) {
+            // A negated constraint (including an empty registry vocabulary) can reject null even
+            // after widening its type. Add null as a separate alternative to the whole constraint.
+            return ['anyOf' => [$schema, ['type' => 'null']]];
+        }
+
+        if (isset($schema['enum']) && ! in_array(null, $schema['enum'], true)) {
+            $schema['enum'][] = null;
+        }
+
         if (isset($schema['$ref'])) {
             $ref = $schema['$ref'];
             unset($schema['$ref'], $schema['nullable']);

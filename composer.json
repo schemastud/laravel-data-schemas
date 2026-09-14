@@ -85,7 +85,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Schemastud\\DataSchemas\\": "src/"
+            "Schemastud\\DataSchemas\\": "src/",
+            "Rushing\\LaravelDataSchemasScribe\\Attributes\\": "src/Http/Attributes/"
         }
     },
     "autoload-dev": {

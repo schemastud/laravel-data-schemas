@@ -3,6 +3,7 @@
 namespace Schemastud\DataSchemas\Strategies;
 
 use BackedEnum;
+use Illuminate\Validation\ValidationRuleParser;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionProperty;
@@ -10,11 +11,13 @@ use Schemastud\DataSchemas\Attributes\ExistsInRegistry;
 use Spatie\LaravelData\Attributes\Validation\Between;
 use Spatie\LaravelData\Attributes\Validation\Email;
 use Spatie\LaravelData\Attributes\Validation\Enum;
+use Spatie\LaravelData\Attributes\Validation\In;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Url;
 use Spatie\LaravelData\Attributes\Validation\Uuid;
 use Spatie\LaravelData\Attributes\Validation\ValidationAttribute;
+use Spatie\LaravelData\Support\Validation\ValidationPath;
 
 /**
  * The default strategy that maps spatie/laravel-data validation attributes to
@@ -67,6 +70,7 @@ class ValidationAttributeStrategy implements SchemaStrategy
             }
 
             match ($attrClass) {
+                In::class => $this->applyInConstraint($instance, $schema),
                 Max::class => $this->applyMaxConstraint($instance, $schema),
                 Min::class => $this->applyMinConstraint($instance, $schema),
                 Between::class => $this->applyBetweenConstraint($instance, $schema),
@@ -79,6 +83,47 @@ class ValidationAttributeStrategy implements SchemaStrategy
         }
 
         return $schema;
+    }
+
+    protected function applyInConstraint(In $attr, array &$schema): void
+    {
+        // Use Spatie's normalized rule and Laravel's CSV parser: both the variadic/array
+        // forms and wrapped In rules preserve choices containing commas or quotes.
+        [, $parameters] = ValidationRuleParser::parse((string) $attr->getRule(ValidationPath::create()));
+        $parameters = array_values(array_filter($parameters, fn ($value): bool => $value !== null));
+        $target = &$schema;
+        $array = $this->schemaHasType($schema, 'array');
+        if ($array) {
+            $schema['items'] ??= [];
+            $target = &$schema['items'];
+        }
+        // Each declared scalar type contributes its own wire values. Laravel compares
+        // scalar In values loosely after string conversion, but arrays via array_diff.
+        $types = (array) ($target['type'] ?? ['string', 'integer', 'number', 'boolean']);
+        $values = [];
+        foreach ($types as $type) {
+            $candidates = match ($type) {
+                'string' => $parameters,
+                'integer' => array_map(fn ($value): int => (int) $value, array_filter($parameters, fn ($value): bool => is_numeric($value) && (float) $value === (float) (int) $value)),
+                'number' => array_map(fn ($value): float => (float) $value, array_filter($parameters, fn ($value): bool => is_numeric($value) && is_finite((float) $value))),
+                'boolean' => [true, false],
+                'null' => [null],
+                default => [],
+            };
+            foreach ($candidates as $value) {
+                $accepted = $value === null || ($array
+                    ? array_diff([$value], $parameters) === []
+                    : in_array((string) $value, $parameters));
+                if ($accepted && ! in_array($value, $values, true)) {
+                    $values[] = $value;
+                }
+            }
+        }
+        if ($values === []) {
+            $target['not'] = new \stdClass;
+        } else {
+            $target['enum'] = $values;
+        }
     }
 
     protected function schemaHasType(array $schema, string $needle): bool

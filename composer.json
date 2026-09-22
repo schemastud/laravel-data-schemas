@@ -119,6 +119,7 @@
         }
     },
     "scripts": {
+        "test": "@php vendor/bin/phpunit",
         "pint": "@php -d memory_limit=512M vendor/bin/pint"
     }
 }

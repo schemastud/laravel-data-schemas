@@ -14,6 +14,11 @@ namespace Schemastud\DataSchemas\Lifecycle;
  *
  * Lists (JSON arrays) keep their order — `required`, `enum`, `type` unions and
  * `prefixItems` are structurally significant.
+ *
+ * One encoding is folded before hashing: the OpenAPI `nullable: true` keyword is rewritten into the
+ * JSON Schema null alternative the generator emits ({@see self::normalizeNullable()}, ADR 0002), so
+ * a frozen artifact written before data-schemas `e66c503` and today's projection of the same class
+ * fingerprint alike.
  */
 class SchemaFingerprint
 {
@@ -63,6 +68,8 @@ class SchemaFingerprint
             return array_map(fn ($item) => self::canonicalize($item, $excludeKeys), $node);
         }
 
+        $node = self::normalizeNullable($node);
+
         $out = [];
         foreach ($node as $key => $value) {
             if (in_array($key, $excludeKeys, true)) {
@@ -74,6 +81,77 @@ class SchemaFingerprint
         ksort($out);
 
         return $out;
+    }
+
+    /**
+     * Rewrite the OpenAPI-3.0 `nullable` keyword into the JSON Schema form the generator emits today,
+     * so the two nullable encodings share one identity (ADR 0002).
+     *
+     * data-schemas `e66c503` stopped emitting `{"$ref": X, "nullable": true}` and started emitting
+     * `{"anyOf": [{"$ref": X}, {"type": "null"}]}` — the same declared field (`?Split $split`),
+     * spelled the way 2020-12 validators honour. Every artifact frozen before that commit carries the
+     * old spelling, so a byte-faithful fingerprint read the re-spelling as a shape change on classes
+     * whose PHP had not moved. Identity is about the declared shape, not the encoding.
+     *
+     * Mirrors {@see \Schemastud\DataSchemas\Generators\JsonSchemaGenerator::makeNullable()} for the
+     * shapes that method produces: `$ref` → `anyOf[{$ref},{type:null}]` (siblings kept), an existing
+     * `anyOf` gains a `{type:null}` member, a scalar/array `type` becomes a union with `"null"`, and an
+     * `enum` gains `null`. `nullable: false` is the default and is dropped. Only a literal boolean is
+     * rewritten; any other value is left for the fingerprint to see.
+     *
+     * @param  array<string, mixed>  $node
+     * @return array<string, mixed>
+     */
+    public static function normalizeNullable(array $node): array
+    {
+        if (! array_key_exists('nullable', $node) || ! is_bool($node['nullable'])) {
+            return $node;
+        }
+
+        $nullable = $node['nullable'];
+        unset($node['nullable']);
+
+        if (! $nullable) {
+            return $node;
+        }
+
+        if (isset($node['not'])) {
+            return ['anyOf' => [$node, ['type' => 'null']]];
+        }
+
+        if (isset($node['enum']) && is_array($node['enum']) && ! in_array(null, $node['enum'], true)) {
+            $node['enum'][] = null;
+        }
+
+        if (isset($node['$ref'])) {
+            $ref = $node['$ref'];
+            unset($node['$ref']);
+
+            return ['anyOf' => [['$ref' => $ref], ['type' => 'null']]] + $node;
+        }
+
+        if (isset($node['anyOf']) && is_array($node['anyOf'])) {
+            if (! in_array(['type' => 'null'], $node['anyOf'], true)) {
+                $node['anyOf'][] = ['type' => 'null'];
+            }
+
+            return $node;
+        }
+
+        $type = $node['type'] ?? null;
+
+        if ($type === null) {
+            $node['type'] = 'null';
+        } elseif (is_array($type)) {
+            if (! in_array('null', $type, true)) {
+                $type[] = 'null';
+            }
+            $node['type'] = array_values($type);
+        } else {
+            $node['type'] = [$type, 'null'];
+        }
+
+        return $node;
     }
 
     /**

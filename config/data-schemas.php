@@ -224,6 +224,14 @@ return [
     'base_uri' => null,
 
     /*
+    | The exact `.env` line this host expects for `base_uri`, such as
+    | `SCHEMA_BASE_URI=https://app.example.com/schemas`. It is read ONLY by the
+    | `MissingSchemaBaseUri` message, so a checkout whose `.env` lacks the line
+    | is told exactly what to add. It is never minted: a hint is not a default.
+    */
+    'base_uri_hint' => null,
+
+    /*
     |--------------------------------------------------------------------------
     | Schema Id Parsers (how a package's refs parse)
     |--------------------------------------------------------------------------

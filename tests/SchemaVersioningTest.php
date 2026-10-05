@@ -50,6 +50,27 @@ class SchemaVersioningTest extends TestCase
             ->generate(new ReflectionClass(VersionedAuthorData::class));
     }
 
+    /**
+     * app-walkthrough APP-13: a host that drops its fallback names the line it expects, so a checkout whose `.env` lacks it
+     * is told exactly what to add. The hint feeds the message only; it is never minted.
+     */
+    public function test_the_missing_authority_message_names_the_hosts_exact_env_line(): void
+    {
+        $this->expectException(MissingSchemaBaseUri::class);
+        $this->expectExceptionMessage('add this line to the .env: SCHEMA_BASE_URI=https://app.example.com/schemas');
+
+        (new JsonSchemaGenerator(['base_uri_hint' => 'SCHEMA_BASE_URI=https://app.example.com/schemas']))
+            ->generate(new ReflectionClass(VersionedAuthorData::class));
+    }
+
+    public function test_without_a_hint_the_message_still_names_the_env_line_to_add(): void
+    {
+        $this->expectException(MissingSchemaBaseUri::class);
+        $this->expectExceptionMessage('SCHEMA_BASE_URI=<the origin that serves your schemas>/schemas');
+
+        (new JsonSchemaGenerator)->generate(new ReflectionClass(VersionedAuthorData::class));
+    }
+
     public function test_a_relative_base_uri_throws_rather_than_minting_a_relative_id(): void
     {
         // beam-facade ticket 112. `/schemas` is a FOURTH state the tri-state never declared: it

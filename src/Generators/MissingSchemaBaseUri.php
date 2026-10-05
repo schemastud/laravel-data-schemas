@@ -28,13 +28,22 @@ use Schemastud\DataSchemas\Ids\UndeclaredSchemaAuthority;
  */
 class MissingSchemaBaseUri extends RuntimeException implements UndeclaredSchemaAuthority
 {
-    public function __construct(public string $class)
+    /**
+     * @param  string|null  $hint  the exact `.env` line this host expects (`data-schemas.base_uri_hint`), named in the
+     *                             message so a checkout whose `.env` lacks it is told what to add. Never minted.
+     */
+    public function __construct(public string $class, public ?string $hint = null)
     {
+        $line = is_string($hint) && trim($hint) !== ''
+            ? 'add this line to the .env: '.trim($hint)
+            : 'add a line to the .env: SCHEMA_BASE_URI=<the origin that serves your schemas>/schemas '
+                .'(read by "data-schemas.base_uri" in config/data-schemas.php)';
+
         parent::__construct(sprintf(
-            '%s opts into versioned identity, but "data-schemas.base_uri" is not configured. '
-            .'Declare the origin that serves this host\'s schemas (e.g. "https://app.example.com/schemas"), '
-            .'or set it to false to opt out of versioned $ids. An $id is write-once, so there is no default.',
+            '%s opts into versioned identity, but "data-schemas.base_uri" is not configured: %s. '
+            .'Or set it to false to opt out of versioned $ids. An $id is write-once, so there is no default.',
             $class,
+            $line,
         ));
     }
 }

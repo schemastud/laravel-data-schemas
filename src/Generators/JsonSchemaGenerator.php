@@ -1219,7 +1219,7 @@ class JsonSchemaGenerator implements Generator
         }
 
         if (! is_string($base) || trim($base) === '') {
-            throw new MissingSchemaBaseUri($class->getName());
+            throw new MissingSchemaBaseUri($class->getName(), $this->config['base_uri_hint'] ?? null);
         }
 
         // Declared, but not an ORIGIN. `/schemas` clears the guard above and mints a relative `$id`

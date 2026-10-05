@@ -187,6 +187,10 @@ return [
     'schema_metadata' => [
         '$schema' => true,
         '$id' => true,
+        // An object or enum with no #[Title] is titled with its class short name. A host whose renderers
+        // must never show an identifier sets this false: such a schema then carries no `title` (a declared
+        // #[Title] and ProvidesEnumLabel's `enumNames` are unaffected). See the APP-09 ADR.
+        'identifier_titles' => true,
     ],
 
     /*

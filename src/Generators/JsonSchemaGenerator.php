@@ -171,9 +171,12 @@ class JsonSchemaGenerator implements Generator
             'type' => 'object',
             // A class-level #[Title] wins over the class short name — the root peer of the
             // class-level #[Description] below (the attribute already declares TARGET_CLASS).
-            'title' => $this->getClassTitle($class) ?? $class->getShortName(),
+            'title' => $this->getClassTitle($class) ?? $this->identifierTitle($class->getShortName()),
             'properties' => [],
         ];
+        if ($schema['title'] === null) {
+            unset($schema['title']);
+        }
 
         if ($description = $this->getClassDescription($class)) {
             $schema['description'] = $description;
@@ -649,6 +652,18 @@ class JsonSchemaGenerator implements Generator
         return '#/$defs/'.$short;
     }
 
+    /**
+     * The title an object or enum falls back to when it declares no #[Title]: its class short name, unless the host
+     * sets `schema_metadata.identifier_titles => false`, in which case none (app-walkthrough APP-09/APP-21). A class
+     * name is an identifier, not a label: renderers then show nothing, or the humanized property name, and never
+     * "UxType". The default keeps the short name, so a host that does not opt in generates exactly what it did.
+     * `title` is outside SchemaFingerprint, so a frozen version does not drift either way.
+     */
+    protected function identifierTitle(string $short): ?string
+    {
+        return ($this->config['schema_metadata']['identifier_titles'] ?? true) ? $short : null;
+    }
+
     protected function ensureEnumDef(string $enumClass): string
     {
         $short = (new ReflectionClass($enumClass))->getShortName();
@@ -668,9 +683,12 @@ class JsonSchemaGenerator implements Generator
             // property's own #[Title] does override this via the sibling-title RJSF merge, but a
             // property with no override was stuck with the class name regardless). Falls back to the
             // short name, unchanged, for every enum that hasn't opted in.
-            'title' => $this->getClassTitle($reflection) ?? $short,
+            'title' => $this->getClassTitle($reflection) ?? $this->identifierTitle($short),
             'enum' => array_map(fn (BackedEnum $case) => $case->value, $enumClass::cases()),
         ];
+        if ($def['title'] === null) {
+            unset($def['title']);
+        }
 
         // An enum opting into human labels (ProvidesEnumLabel) emits `enumNames`
         // parallel to `enum`, so a rendered <select> shows "Daily", not "DAILY".

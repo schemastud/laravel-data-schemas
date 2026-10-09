@@ -4,6 +4,8 @@ namespace Schemastud\DataSchemas\Generators;
 
 use BackedEnum;
 use DateTimeInterface;
+use Illuminate\Container\Container;
+use Illuminate\Contracts\Foundation\Application;
 use InvalidArgumentException;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -11,6 +13,7 @@ use ReflectionEnum;
 use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionUnionType;
+use RuntimeException;
 use Schemastud\DataSchemas\Attributes\ArrayItems;
 use Schemastud\DataSchemas\Attributes\Description;
 use Schemastud\DataSchemas\Attributes\Example;
@@ -1144,11 +1147,13 @@ class JsonSchemaGenerator implements Generator
     }
 
     /**
-     * Spatie's own model of this property, when there is one and the container can build it.
+     * Spatie's own model of this property, when there is one and Laravel can build it.
      *
      * `DataConfig::getDataClass()` goes through `DataContainer`, so it needs a booted
      * application. Outside one — the generator is usable standalone — there is no spatie
-     * answer and callers fall back to reflection.
+     * answer and callers fall back to reflection. Once Laravel is booted, however, a failure
+     * to resolve that model is a broken projection, not permission to publish a different
+     * reflection-derived contract.
      */
     protected function spatieProperty(ReflectionProperty $property): ?DataProperty
     {
@@ -1159,14 +1164,32 @@ class JsonSchemaGenerator implements Generator
             return $this->spatieProperties[$cacheKey];
         }
 
-        $resolved = null;
+        if (! is_subclass_of($class, BaseData::class)) {
+            return $this->spatieProperties[$cacheKey] = null;
+        }
 
-        if (is_subclass_of($class, BaseData::class) && function_exists('app')) {
-            try {
-                $resolved = app(DataConfig::class)->getDataClass($class)->properties[$property->getName()] ?? null;
-            } catch (\Throwable) {
-                $resolved = null;
-            }
+        $container = Container::getInstance();
+
+        // A flushed Testbench application (and other dormant containers) may remain the global
+        // Container instance. The config binding is established during Laravel bootstrap and
+        // removed by flush(), so it distinguishes a live application from standalone use without
+        // making exception handling decide which mode the generator is in.
+        if (! $container instanceof Application || ! $container->bound('config')) {
+            return $this->spatieProperties[$cacheKey] = null;
+        }
+
+        try {
+            $resolved = $container->make(DataConfig::class)
+                ->getDataClass($class)
+                ->properties[$property->getName()] ?? null;
+        } catch (\Throwable $exception) {
+            throw new RuntimeException(sprintf(
+                'Unable to resolve Spatie DataConfig for %s::$%s: %s: %s',
+                $class,
+                $property->getName(),
+                $exception::class,
+                $exception->getMessage(),
+            ), previous: $exception);
         }
 
         return $this->spatieProperties[$cacheKey] = $resolved;

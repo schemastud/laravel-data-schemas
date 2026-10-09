@@ -2,8 +2,12 @@
 
 namespace Schemastud\DataSchemas\Tests;
 
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
+use Illuminate\Support\Facades\Cache;
 use Orchestra\Testbench\TestCase;
 use ReflectionClass;
+use RuntimeException;
 use Schemastud\DataSchemas\Generators\JsonSchemaGenerator;
 use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
 use Schemastud\DataSchemas\Tests\Fixtures\MappedNameData;
@@ -137,5 +141,40 @@ class MappedNameProjectionTest extends TestCase
         $this->assertArrayHasKey('source_type', $nested);
         $this->assertArrayNotHasKey('sourceType', $nested);
         $this->assertContains('source_type', $schema['$defs']['MappedNameData']['required'] ?? []);
+    }
+
+    public function test_a_structure_cache_failure_cannot_silently_publish_raw_property_names(): void
+    {
+        $this->app['env'] = 'local';
+        config([
+            'cache.stores.throwing' => ['driver' => 'throwing'],
+            'data.structure_caching.enabled' => true,
+            'data.structure_caching.cache.store' => 'throwing',
+        ]);
+        Cache::extend('throwing', function () {
+            return new Repository(new class extends ArrayStore
+            {
+                public function get($key): never
+                {
+                    throw new RuntimeException('Structure cache store [throwing] is unavailable.');
+                }
+            });
+        });
+
+        try {
+            $schema = $this->schema('request');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString(MappedNameData::class.'::$sourceType', $exception->getMessage());
+            $this->assertStringContainsString(RuntimeException::class, $exception->getMessage());
+            $this->assertStringContainsString('Structure cache store [throwing] is unavailable.', $exception->getMessage());
+            $this->assertInstanceOf(RuntimeException::class, $exception->getPrevious());
+
+            return;
+        }
+
+        $this->fail(sprintf(
+            'The cache failure was swallowed; the schema silently published [%s].',
+            implode(', ', array_keys($schema['properties'])),
+        ));
     }
 }

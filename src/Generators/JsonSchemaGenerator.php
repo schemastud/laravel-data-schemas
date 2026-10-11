@@ -6,6 +6,7 @@ use BackedEnum;
 use DateTimeInterface;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\QueryException;
 use InvalidArgumentException;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -83,6 +84,9 @@ class JsonSchemaGenerator implements Generator
      * @var array<string, ?DataProperty>
      */
     protected array $spatieProperties = [];
+
+    /** The live or uncached Spatie declaration model used by this generator instance. */
+    protected ?DataConfig $spatieDataConfig = null;
 
     public function __construct(protected array $config = []) {}
 
@@ -1179,7 +1183,7 @@ class JsonSchemaGenerator implements Generator
         }
 
         try {
-            $resolved = $container->make(DataConfig::class)
+            $resolved = $this->spatieDataConfig($container)
                 ->getDataClass($class)
                 ->properties[$property->getName()] ?? null;
         } catch (\Throwable $exception) {
@@ -1193,6 +1197,33 @@ class JsonSchemaGenerator implements Generator
         }
 
         return $this->spatieProperties[$cacheKey] = $resolved;
+    }
+
+    /**
+     * Resolve Spatie's declaration model without making application boot depend on a
+     * database-backed structure-cache table that migrations have not created yet.
+     *
+     * The structure cache is an optimization over `DataConfig::createFromConfig()`, not
+     * the declaration's authority. A database query failure while reading that cache can
+     * therefore fall back to the same uncached builder Spatie uses when caching is disabled.
+     * Other failures still reach {@see spatieProperty()} and fail loudly: a broken Data
+     * declaration must never silently publish reflection-derived wire names.
+     */
+    protected function spatieDataConfig(Container $container): DataConfig
+    {
+        if ($this->spatieDataConfig !== null) {
+            return $this->spatieDataConfig;
+        }
+
+        try {
+            return $this->spatieDataConfig = $container->make(DataConfig::class);
+        } catch (QueryException) {
+            $config = $container->make('config')->get('data', []);
+
+            return $this->spatieDataConfig = DataConfig::createFromConfig(
+                is_array($config) ? $config : [],
+            );
+        }
     }
 
     protected function inferExample(array $schema): mixed

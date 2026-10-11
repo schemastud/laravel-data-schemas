@@ -13,6 +13,7 @@ use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
 use Schemastud\DataSchemas\Tests\Fixtures\MappedNameData;
 use Schemastud\DataSchemas\Tests\Fixtures\MappedNameHostData;
 use Spatie\LaravelData\LaravelDataServiceProvider;
+use Spatie\LaravelData\Support\Caching\DataStructureCache;
 use Spatie\LaravelData\Support\DataConfig;
 
 /**
@@ -176,5 +177,26 @@ class MappedNameProjectionTest extends TestCase
             'The cache failure was swallowed; the schema silently published [%s].',
             implode(', ', array_keys($schema['properties'])),
         ));
+    }
+
+    public function test_a_database_structure_cache_can_be_cold_before_its_table_exists(): void
+    {
+        $this->app['env'] = 'local';
+        config([
+            'cache.stores.fresh_database' => [
+                'driver' => 'database',
+                'connection' => config('database.default'),
+                'table' => 'cache',
+            ],
+            'data.structure_caching.enabled' => true,
+            'data.structure_caching.cache.store' => 'fresh_database',
+        ]);
+        $this->app->forgetInstance(DataStructureCache::class);
+        $this->app->forgetInstance(DataConfig::class);
+
+        $schema = $this->schema('request');
+
+        $this->assertArrayHasKey('source_type', $schema['properties']);
+        $this->assertArrayNotHasKey('sourceType', $schema['properties']);
     }
 }

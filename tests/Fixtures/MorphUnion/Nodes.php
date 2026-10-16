@@ -3,6 +3,7 @@
 namespace Schemastud\DataSchemas\Tests;
 
 use Schemastud\DataSchemas\Attributes\MorphUnion;
+use Spatie\LaravelData\Attributes\PropertyForMorph;
 use Spatie\LaravelData\Contracts\PropertyMorphableData;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
@@ -10,7 +11,7 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 #[MorphUnion(discriminator: 'kind', arms: ['text' => MorphText::class, 'block' => MorphBlock::class])]
 abstract class MorphNode extends Data implements PropertyMorphableData
 {
-    public function __construct(public string $kind) {}
+    public function __construct(#[PropertyForMorph] public string $kind) {}
 
     public static function morph(array $properties): ?string
     {

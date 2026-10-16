@@ -6,6 +6,7 @@ use Attribute;
 use InvalidArgumentException;
 use ReflectionClass;
 use ReflectionNamedType;
+use Spatie\LaravelData\Attributes\PropertyForMorph;
 use Spatie\LaravelData\Contracts\PropertyMorphableData;
 use Spatie\LaravelData\Data;
 
@@ -29,6 +30,7 @@ final class MorphUnion
         if ($union->discriminator === '' || $union->arms === []) {
             throw new InvalidArgumentException('MorphUnion requires a discriminator and non-empty arms.');
         }
+        $baseClass = $base->getName();
         foreach ($union->arms as $tag => $arm) {
             if (! is_string($tag) || $tag === '' || ! is_string($arm) || ! is_subclass_of($arm, $base->getName())) {
                 throw new InvalidArgumentException('MorphUnion arms require string tags and subclasses of the base.');
@@ -41,6 +43,14 @@ final class MorphUnion
             $type = $property->getType();
             if (! $property->isPublic() || $property->isStatic() || ! $type instanceof ReflectionNamedType || $type->getName() !== 'string' || $type->allowsNull()) {
                 throw new InvalidArgumentException('MorphUnion discriminator must be a public non-null string property.');
+            }
+        }
+        if (! $base->hasProperty($union->discriminator) || $base->getProperty($union->discriminator)->getAttributes(PropertyForMorph::class) === []) {
+            throw new InvalidArgumentException('MorphUnion discriminator must carry #[PropertyForMorph] on the base for runtime hydration.');
+        }
+        foreach ($union->arms as $tag => $arm) {
+            if ($baseClass::morph([$union->discriminator => $tag]) !== $arm) {
+                throw new InvalidArgumentException('MorphUnion arm must match the base runtime morph for its discriminator tag.');
             }
         }
 

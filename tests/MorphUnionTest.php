@@ -61,6 +61,22 @@ class MorphUnionTest extends TestCase
         }
     }
 
+    public function test_arm_without_a_runtime_morph_discriminator_is_refused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('PropertyForMorph');
+
+        MorphUnion::forClass(new ReflectionClass(UnmarkedMorphNode::class));
+    }
+
+    public function test_arm_that_the_runtime_morph_does_not_resolve_is_refused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('runtime morph');
+
+        MorphUnion::forClass(new ReflectionClass(MismatchedMorphNode::class));
+    }
+
     public function test_typescript_emits_real_tagged_references_and_leaves_unannotated_alone(): void
     {
         $transformer = new MorphUnionTransformer;
@@ -99,3 +115,29 @@ abstract class InvalidMorph extends Data implements PropertyMorphableData
         return null;
     }
 }
+
+#[MorphUnion(discriminator: 'kind', arms: ['plain' => UnmarkedMorphArm::class])]
+abstract class UnmarkedMorphNode extends Data implements PropertyMorphableData
+{
+    public function __construct(public string $kind) {}
+
+    public static function morph(array $properties): ?string
+    {
+        return ($properties['kind'] ?? null) === 'plain' ? UnmarkedMorphArm::class : null;
+    }
+}
+
+class UnmarkedMorphArm extends UnmarkedMorphNode {}
+
+#[MorphUnion(discriminator: 'kind', arms: ['declared' => MismatchedMorphArm::class])]
+abstract class MismatchedMorphNode extends Data implements PropertyMorphableData
+{
+    public function __construct(#[\Spatie\LaravelData\Attributes\PropertyForMorph] public string $kind) {}
+
+    public static function morph(array $properties): ?string
+    {
+        return null;
+    }
+}
+
+class MismatchedMorphArm extends MismatchedMorphNode {}

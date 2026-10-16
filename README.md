@@ -18,7 +18,7 @@ This package automatically converts your [Spatie Laravel Data](https://github.co
 Install via Composer:
 
 ```bash
-composer require rushing/laravel-data-schemas
+composer require schemastud/laravel-data-schemas
 ```
 
 Publish the configuration file (optional):

@@ -4,6 +4,7 @@ namespace Schemastud\DataSchemas\Collectors;
 
 use Illuminate\Support\Str;
 use ReflectionClass;
+use Schemastud\DataSchemas\Attributes\MorphUnion;
 use Spatie\LaravelData\Data;
 
 class DataObjectCollector extends Collector
@@ -15,8 +16,18 @@ class DataObjectCollector extends Collector
             return false;
         }
 
-        // Check if class is abstract or interface
-        if ($class->isAbstract() || $class->isInterface()) {
+        // Interfaces never carry a schema.
+        if ($class->isInterface()) {
+            return false;
+        }
+
+        // An abstract class is collected ONLY when it declares #[MorphUnion]. EP-02's
+        // MorphUnionTransformer and morph-aware JsonSchemaGenerator project such a base to a
+        // discriminated union, but only if discovery hands it over — a directory scan (the real
+        // pipeline, and how the app's typescript:transform / schemas:generate find classes) must reach
+        // the base itself, not just its arms. Every OTHER abstract still falls out here: an abstract
+        // Data with no morph union has no concrete schema and is not a union either.
+        if ($class->isAbstract() && $class->getAttributes(MorphUnion::class) === []) {
             return false;
         }
 

@@ -341,3 +341,42 @@ The `forLlmStrict()` projection wraps an annotated `$ref` in a single-branch `an
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+### Declared morph unions
+
+A closed `PropertyMorphableData` vocabulary can declare its projection on the base:
+
+```php
+use Schemastud\DataSchemas\Attributes\MorphUnion;
+
+#[MorphUnion(discriminator: 'kind', arms: [
+    'text' => TextNode::class,
+    'block' => BlockNode::class,
+])]
+abstract class JsonNode extends Data implements PropertyMorphableData
+{
+    // The ordinary Spatie morph() implementation remains responsible for hydration.
+}
+```
+
+Arms must be concrete subclasses with a public, non-null string discriminator.
+JSON Schema emits `oneOf` arms combining the class reference with a required literal
+`const` discriminator. Recursive references retain the normal `$defs` handling.
+The attribute describes a closed vocabulary; keep `morph()` consistent with it.
+Open registry-backed morphs are not enumerated. Classes without this attribute
+retain their existing schema and transformer behavior.
+
+For Spatie TypeScript Transformer **3.3+**, install `spatie/typescript-transformer`
+and register this transformer before your ordinary class/Data transformer:
+
+```php
+$config->prependTransformer(
+    \Schemastud\DataSchemas\TypeScript\MorphUnionTransformer::class,
+);
+```
+
+Include the arm classes in the normal transformation discovery. The extension uses
+Spatie's connected references and emits a union of each arm intersected with its
+literal discriminator, preserving arm fields and recursive types. It returns
+`Untransformable` for unannotated classes so the configured next transformer runs.
+There is no automatic service-provider registration and no change to vendor code.

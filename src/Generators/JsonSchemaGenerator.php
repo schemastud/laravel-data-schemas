@@ -20,6 +20,7 @@ use Schemastud\DataSchemas\Attributes\Description;
 use Schemastud\DataSchemas\Attributes\Example;
 use Schemastud\DataSchemas\Attributes\Keyword;
 use Schemastud\DataSchemas\Attributes\MapValues;
+use Schemastud\DataSchemas\Attributes\MorphUnion;
 use Schemastud\DataSchemas\Attributes\Title;
 use Schemastud\DataSchemas\Contracts\ProvidesEnumLabel;
 use Schemastud\DataSchemas\Contracts\SchemaIdentity;
@@ -174,6 +175,18 @@ class JsonSchemaGenerator implements Generator
 
     protected function buildObjectSchema(ReflectionClass $class): array
     {
+        if ($union = MorphUnion::forClass($class)) {
+            $arms = [];
+            foreach ($union->arms as $tag => $arm) {
+                $arms[] = ['allOf' => [
+                    ['$ref' => $this->ensureDef(new ReflectionClass($arm))],
+                    ['type' => 'object', 'properties' => [$union->discriminator => ['const' => $tag]], 'required' => [$union->discriminator]],
+                ]];
+            }
+
+            return ['oneOf' => $arms];
+        }
+
         $schema = [
             'type' => 'object',
             // A class-level #[Title] wins over the class short name — the root peer of the

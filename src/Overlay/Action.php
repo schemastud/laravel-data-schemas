@@ -4,8 +4,10 @@ namespace Schemastud\DataSchemas\Overlay;
 
 // One overlay action: a `target` JSONPath plus exactly one op. The op vocabulary
 // is fixed (override/merge/unset); an action carrying zero or more than one op
-// key is malformed. Only `override` is applied by the fold in this slice; the
-// other two ops are recognised here so malformed-action rejection is complete.
+// key is malformed. The fold applies ALL THREE ops (OverlayStack::applyAction
+// dispatches each to JsonPathMutator) — an earlier slice applied only
+// `override`, and this comment said so long after the other two landed
+// (architecture-pass A4-C3, corrected 2026-10-18).
 class Action
 {
     const OP_OVERRIDE = 'override';

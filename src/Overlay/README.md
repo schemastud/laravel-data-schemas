@@ -2,8 +2,9 @@
 
 The array-native core of DataOverlay (ADR-0089): an
 ordered stack of overlay documents laid over a whole JSON document — a schema *or* an instance —
-through one shared format. This slice lands the addressing substrate, the fold loop, the document
-contract, and the first op (`override`).
+through one shared format: the addressing substrate, the fold loop, the document contract, and all
+three ops — `override`, `merge`, `unset` (each dispatched by `OverlayStack::applyAction` to
+`JsonPathMutator`; the "first op only" wording predated the other two landing — A4-C3).
 
 ## JSONPath library choice — `galbar/jsonpath` (Apache-2.0)
 

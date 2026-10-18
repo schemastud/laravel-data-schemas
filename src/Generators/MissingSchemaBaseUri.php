@@ -46,4 +46,25 @@ class MissingSchemaBaseUri extends RuntimeException implements UndeclaredSchemaA
             $line,
         ));
     }
+
+    /**
+     * A missing authority is HOST MISCONFIGURATION, not a server fault: surfaced over HTTP it was a
+     * bare 500 that hid the exact fix this message carries (launch 00, 2026-10-18 21:52Z — a fresh
+     * starter's Studio request). Render it as 503 with the actionable text instead; the operator
+     * sets one env line and retries.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function render($request)
+    {
+        if ($request->expectsJson()) {
+            return new \Illuminate\Http\JsonResponse([
+                'message' => 'Schema authority not configured (set SCHEMA_BASE_URI).',
+                'detail' => $this->getMessage(),
+            ], 503);
+        }
+
+        return new \Illuminate\Http\Response($this->getMessage(), 503);
+    }
 }

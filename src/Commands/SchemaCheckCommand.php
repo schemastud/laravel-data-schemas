@@ -72,20 +72,20 @@ class SchemaCheckCommand extends Command
             }
         }
 
-        if (! $result->hasDrift()) {
-            $this->info('No schema drift detected.');
-
-            return self::SUCCESS;
-        }
-
         // api-surface-coherence 122: reported, never silent. An inert delta is not drift, but a reader
         // who is told nothing cannot tell "no delta" from "a delta we decided not to count" - which is
         // the false-green shape this whole gate exists to refuse.
         if ($result->refreezable !== []) {
-            $this->line(sprintf('Inert (`default`-only, version 1) in %d class(es) - NOT drift:', count($result->refreezable)));
+            $this->line(sprintf('Inert changes in %d class(es) - NOT drift:', count($result->refreezable)));
             foreach ($result->refreezable as $entry) {
                 $this->line('  - '.$entry->reason);
             }
+        }
+
+        if (! $result->hasDrift()) {
+            $this->info('No schema drift detected.');
+
+            return self::SUCCESS;
         }
 
         $this->error(sprintf('Schema drift detected in %d class(es):', count($result->drifted)));

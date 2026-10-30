@@ -14,7 +14,7 @@ namespace Schemastud\DataSchemas;
  *
  * These are unprefixed because they are substrate-level projections of the schema
  * generator itself, not engine-private (engine-private keywords take `x-{prefix}-*`):
- *  - `x-lazy` / `x-optional`  — Spatie Lazy/Optional property projections
+ *  - `x-lazy` — Spatie Lazy projection (Optional is absence from `required`)
  *  - `x-hidden` — a property dropped from the emitted schema entirely (never reaches
  *    the client) while staying on the Data class for server-side binding: a
  *    mode-independent peer of the `#[Computed]` skip. Recognized by the generator
@@ -32,8 +32,6 @@ class Keywords
 {
     public const Lazy = 'x-lazy';
 
-    public const Optional = 'x-optional';
-
     public const Hidden = 'x-hidden';
 
     public const MigrateFrom = 'x-migrate-from';
@@ -49,6 +47,6 @@ class Keywords
      */
     public static function owned(): array
     {
-        return [self::Lazy, self::Optional, self::Hidden, self::MigrateFrom, self::Migrate, self::Source];
+        return [self::Lazy, self::Hidden, self::MigrateFrom, self::Migrate, self::Source];
     }
 }

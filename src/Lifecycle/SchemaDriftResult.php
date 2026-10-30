@@ -26,8 +26,8 @@ class SchemaDriftResult
         public array $drifted,
         public array $unfrozen,
         /**
-         * Frozen artifacts whose ONLY delta is added `default` keywords, on a version that cannot be a
-         * migration target (api-surface-coherence 122). Not drift: re-freezable in place under the same
+         * Frozen artifacts whose ONLY delta is added `default` keywords on a first version
+         * (api-surface-coherence 122), or removed retired `x-optional` keywords (owner-review 39). Not drift: re-freezable in place under the same
          * `$id`. Defaulted so existing callers constructing a result with three arguments keep working.
          *
          * @var list<SchemaDriftEntry>

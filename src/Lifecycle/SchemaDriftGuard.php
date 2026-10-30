@@ -160,6 +160,20 @@ class SchemaDriftGuard
                     continue;
                 }
 
+                // Owner-review ticket 39 retires exactly this keyword. Frozen versions stay
+                // byte-for-byte intact; the guard records the inert removal, never re-freezes.
+                if (SchemaFingerprint::inertOptionalRemovalOnly($frozen, $schema)) {
+                    $refreezable[] = new SchemaDriftEntry(
+                        class: $class,
+                        id: $id,
+                        frozenFingerprint: $frozenFingerprint,
+                        currentFingerprint: $current,
+                        reason: sprintf('%s removed x-optional keyword(s) only (%s). Inert retirement; the frozen artifact stays as written.', $class, $id),
+                    );
+
+                    continue;
+                }
+
                 $drifted[] = new SchemaDriftEntry(
                     class: $class,
                     id: $id,

@@ -264,7 +264,7 @@ class JsonSchemaGenerator implements Generator
                 // Strip keywords strict providers reject (examples) or that we re-express
                 // through the type union / anyOf below (readOnly, nullable). Every `x-*`
                 // vendor keyword is an out-of-band annotation for our own consumers
-                // (x-optional/x-lazy and downstream x-beat/x-ground/x-generate) — never
+                // (x-lazy and downstream x-beat/x-ground/x-generate) — never
                 // part of the LLM-facing contract — so strip all of them.
                 //
                 // `default` joins them: OpenAI's strict subset REJECTS the keyword at the
@@ -449,10 +449,7 @@ class JsonSchemaGenerator implements Generator
             $schema[Keywords::Lazy] = true;
         }
 
-        // Optional => key may be absent from input.
-        if ($info['optional']) {
-            $schema[Keywords::Optional] = true;
-        }
+        // Optionality is represented by absence from `required`, without a vendor keyword.
 
         if (! empty($titleAttrs = $property->getAttributes(Title::class))) {
             $schema['title'] = $titleAttrs[0]->newInstance()->value;

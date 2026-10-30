@@ -228,6 +228,48 @@ class SchemaFingerprint
     }
 
     /**
+     * Retirement of the generator's x-optional keyword is inert only in the removal direction.
+     * Keep the keyword in fingerprints: additions/value changes still require a version decision.
+     * Schema positions matter: a property NAMED x-optional or a default's data key is not a keyword.
+     */
+    public static function inertOptionalRemovalOnly(array $frozen, array $current): bool
+    {
+        return self::walkOptionalRemovals(self::canonicalize($frozen), self::canonicalize($current), 'schema');
+    }
+
+    private static function walkOptionalRemovals(mixed $frozen, mixed $current, string $context): bool
+    {
+        if (! is_array($frozen) || ! is_array($current)) {
+            return $frozen === $current;
+        }
+        foreach ($frozen as $key => $value) {
+            if (! array_key_exists($key, $current)) {
+                if ($context === 'schema' && $key === 'x-optional') {
+                    continue;
+                }
+                return false;
+            }
+            $child = 'data';
+            if ($context === 'map' || $context === 'list') {
+                $child = 'schema';
+            } elseif ($context === 'schema') {
+                $child = match ($key) {
+                    'properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas' => 'map',
+                    'allOf', 'anyOf', 'oneOf', 'prefixItems' => 'list',
+                    'items', 'additionalProperties', 'unevaluatedProperties', 'unevaluatedItems',
+                    'contains', 'propertyNames', 'not', 'if', 'then', 'else', 'contentSchema' => 'schema',
+                    default => 'data',
+                };
+            }
+            if (! self::walkOptionalRemovals($value, $current[$key], $child)) {
+                return false;
+            }
+        }
+        // Removing the retired key is allowed; adding it, or anything else, is not.
+        return array_diff_key($current, $frozen) === [];
+    }
+
+    /**
      * The trailing version segment of a schema `$id`, or null when the id does not end in one.
      */
     public static function versionOf(string $id): ?int

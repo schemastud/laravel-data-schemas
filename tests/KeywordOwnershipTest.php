@@ -19,7 +19,7 @@ class KeywordOwnershipTest extends TestCase
 {
     public function test_the_generator_only_emits_x_keywords_it_owns(): void
     {
-        // SampleData exercises x-lazy / x-optional; MigratableProfileData (with the
+        // SampleData exercises x-lazy; MigratableProfileData (with the
         // migration strategy) exercises x-migrate / x-migrate-from.
         $schemas = [
             (new JsonSchemaGenerator)->generate(new ReflectionClass(SampleData::class)),
@@ -39,6 +39,8 @@ class KeywordOwnershipTest extends TestCase
         $emitted = array_values(array_unique($emitted));
         $undeclared = array_values(array_diff($emitted, Keywords::owned()));
 
+        $this->assertNotContains('x-optional', Keywords::owned());
+        $this->assertNotContains('x-optional', $emitted);
         $this->assertNotEmpty($emitted, 'Expected the fixtures to exercise the keyword surface.');
         $this->assertSame([], $undeclared, sprintf(
             'Emitted undeclared x- keyword(s): %s. Declare them in %s.',

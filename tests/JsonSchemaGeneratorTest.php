@@ -48,7 +48,6 @@ class JsonSchemaGeneratorTest extends TestCase
                 ],
                 'nickname' => [
                     'type' => 'string',
-                    'x-optional' => true,
                 ],
                 'user' => [
                     'anyOf' => [['$ref' => '#/$defs/UserData'], ['type' => 'null']],
@@ -100,12 +99,12 @@ class JsonSchemaGeneratorTest extends TestCase
         $this->assertSame('SampleData', $this->generate(SampleData::class)['title']);
     }
 
-    public function test_optional_is_not_required_and_carries_vendor_key(): void
+    public function test_optional_is_not_required_without_a_vendor_keyword(): void
     {
         $schema = $this->generate(SampleData::class);
 
         $this->assertNotContains('nickname', $schema['required']);
-        $this->assertTrue($schema['properties']['nickname']['x-optional']);
+        $this->assertArrayNotHasKey('x-optional', $schema['properties']['nickname']);
         $this->assertSame('string', $schema['properties']['nickname']['type']);
     }
 

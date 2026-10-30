@@ -25,7 +25,7 @@ class ClassUnionSchemaTest extends TestCase
     public function test_keeps_optional_lazy_and_nullable_semantics_around_a_dto_union(): void
     {
         $schema = (new JsonSchemaGenerator)->generate(new ReflectionClass(ClassUnionData::class));
-        $this->assertTrue($schema['properties']['optional']['x-optional']);
+        $this->assertArrayNotHasKey('x-optional', $schema['properties']['optional']);
         foreach (['anyOf', 'readOnly', 'x-lazy'] as $key) {
             $this->assertArrayHasKey($key, $schema['properties']['lazy']);
         }

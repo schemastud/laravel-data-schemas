@@ -13,13 +13,18 @@ interface Generator
     /**
      * Return a variant configured to emit a request-flavoured schema.
      *
-     * The request/response divergence is a deferred seam (see ADR-0027); the
-     * default implementation collapses to a single variant.
+     * The configured JSON Schema generator uses input wire names, omits computed
+     * properties and permits omission of declared defaults. Use this for editable
+     * forms; nullable alone does not make a property omittable.
      */
     public function forRequest(): static;
 
     /**
      * Return a variant configured to emit a response-flavoured schema.
+     *
+     * The configured JSON Schema generator uses output wire names and includes
+     * computed properties. Defaulted properties remain required unless their type
+     * is Optional or Lazy. Hidden properties stay absent in both projections.
      */
     public function forResponse(): static;
 

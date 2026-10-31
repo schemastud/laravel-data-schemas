@@ -39,8 +39,8 @@ namespace App\Data;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Email;
-use Rushing\LaravelDataSchemas\Attributes\Description;
-use Rushing\LaravelDataSchemas\Attributes\Example;
+use Schemastud\DataSchemas\Attributes\Description;
+use Schemastud\DataSchemas\Attributes\Example;
 
 class UserData extends Data
 {
@@ -103,13 +103,42 @@ php artisan schemas:generate --output=storage/schemas
     },
     "age": {
       "type": ["integer", "null"],
+      "default": null,
       "description": "User age in years",
       "examples": [25, 42]
     }
   },
-  "required": ["name", "email"]
+  "required": ["name", "email", "age"]
 }
 ```
+
+### Choose the request or response projection
+
+For an editable form, resolve the host's configured generator chain and select request mode.
+For a record's read projection, select response mode:
+
+```php
+use App\Data\UserData;
+use Schemastud\DataSchemas\Generators\Generator;
+
+$generator = app(Generator::class);
+$requestSchema = $generator->forRequest()->generate(new ReflectionClass(UserData::class));
+$responseSchema = $generator->forResponse()->generate(new ReflectionClass(UserData::class));
+```
+
+The container binding preserves `data-schemas.generators` and the host's strategies/configuration;
+constructing a bare generator bypasses that configured chain. These mode methods return variants,
+so selecting one does not change the other. Request mode follows input-mapped names and omits
+`#[Computed]` properties; response mode follows output-mapped names and includes computed output.
+Hidden properties remain absent in both.
+
+Nullability and omission are independent. `?string $name` without a default is required but accepts
+null. A constructor default such as `?int $age = null` makes the field omittable in request mode;
+response mode still requires it because the Data object serializes its value. `Optional` and `Lazy`
+types are not required in either ordinary projection. The default `collapsed` mode retains the
+response required/default rule, so the example above includes `age` in `required`; it is not the
+schema to reuse unchanged for editable input. A JSON Schema `default` annotation alone does not
+fill values or validate a submitted payload. Use the declared Data input and server validation.
 
 ## Configuration
 

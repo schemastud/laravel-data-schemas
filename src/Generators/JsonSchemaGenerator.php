@@ -941,39 +941,38 @@ class JsonSchemaGenerator implements Generator
     /**
      * The name this property answers to ON THE WIRE, for the axis being generated.
      *
-     * api-surface-coherence 54, and structurally the same finding as 31/70 one axis over:
-     * **spatie already computes this and the generator kept a second, worse copy of it.**
-     * `DataProperty::$inputMappedName` / `$outputMappedName` are already resolved from
-     * `#[MapInputName]`, `#[MapOutputName]`, `#[MapName]` and the host's global
-     * `name_mapping_strategy` — the exact same fact hydration and validation key on. Keying
-     * the document on `ReflectionProperty::getName()` instead published a key the server does
-     * not accept; the SDK generated from that document sent it, and the field was silently
-     * dropped at both ends (a mapped body part produces no error — the server just sees an
-     * absent optional field). Measured at the time: 15 properties across the estate whose wire
-     * key genuinely differs, plus 60 more carrying a `#[MapInputName]` whose argument merely
-     * repeats a deliberately snake_cased PHP property name — written that way ONLY to route
-     * around this method's absence.
+     * api-surface-coherence 54, extended to every mode by owner ruling (root 805623d0):
+     * **spatie already resolves this and the generator must not keep a second, worse copy of
+     * it.** `DataProperty::$inputMappedName` / `$outputMappedName` are already resolved from
+     * `#[MapInputName]`, `#[MapOutputName]`, `#[MapName]` (property- AND class-level, including a
+     * mapper class) and the host's global `name_mapping_strategy` — the exact same fact hydration
+     * and validation key on. Keying the document on `ReflectionProperty::getName()` instead
+     * published a key the server does not accept; the SDK generated from that document sent it,
+     * and the field was silently dropped at both ends (a mapped body part produces no error — the
+     * server just sees an absent optional field).
      *
-     * Asked of spatie, never re-derived, because re-deriving it is the defect: a global mapper
-     * is configured per host, so no attribute scan can see it and no annotation can substitute
-     * for it. Non-Data classes (the generator is not Data-only) and an unbooted container both
-     * fall back to the PHP name, which is what they already answered to.
+     * **ONE code path for every mode.** `request` keys on the INPUT name (what `from()` accepts);
+     * every other mode keys on the OUTPUT name (what `toArray()` emits). The stored/collapsed
+     * shape — the registry/migration-ladder shape read back by key in `Migration\Rungs\*` and
+     * fingerprinted by `SchemaFingerprint` — therefore names the key storage actually writes, and
+     * `llm_strict` names the key a provider actually emits. Where spatie resolves no mapping on
+     * the axis the value is null and the key falls back to the PHP name, so an unmapped property
+     * is untouched on every axis.
      *
-     * **Only `request` and `response` project.** A mapped name is an input-or-output fact and
-     * those are the only two modes that have an axis. `collapsed` — the default — is the
-     * stored/registry/migration-ladder shape, read back by key in `Migration\Rungs\*` and
-     * fingerprinted by `SchemaFingerprint`; re-keying it would rewrite declared mappings and
-     * fingerprints to answer a question they never asked. `llm_strict` describes a structure a
-     * provider emits, judged against the same stored vocabulary. Both keep the PHP name, and
-     * `MappedNameProjectionTest` pins that so a later "finish the job" sweep has to argue first.
+     * Asked of spatie, never re-derived, because re-deriving it is the defect: a global mapper is
+     * configured per host, so no attribute scan can see it and no annotation can substitute for
+     * it. Non-Data classes (the generator is not Data-only) and an unbooted container both fall
+     * back to the PHP name, which is what they already answered to; a booted container that cannot
+     * resolve the model fails loudly in {@see spatieProperty()} rather than silently publishing a
+     * reflection-derived contract. Because `collapsed` now feeds {@see SchemaFingerprint} and the
+     * frozen artifacts, that unbooted fallback is for standalone use only — generate a collapsed /
+     * frozen schema from a BOOTED application, or the PHP-name fallback becomes the frozen contract
+     * rather than the resolved one. `MappedNameProjectionTest` pins the contract on all four modes,
+     * including the unbooted fallback and a global output strategy.
      */
     protected function wireName(ReflectionProperty $property): string
     {
         $name = $property->getName();
-
-        if ($this->mode !== 'request' && $this->mode !== 'response') {
-            return $name;
-        }
 
         $dataProperty = $this->spatieProperty($property);
 

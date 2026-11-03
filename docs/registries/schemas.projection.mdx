@@ -1,0 +1,108 @@
+---
+title: Schema projection sources
+segment: schemas.projection
+nav_order: 100
+excerpt: Where an application's schemas come from: one entry per way of knowing which Data classes to project.
+---
+
+# Schema projection sources
+
+`schemas.projection` answers the question every schema generator has to settle first: which classes
+does this application project into JSON Schemas? Each entry is a **source**, an object that, when
+asked, returns a list of classes. `php artisan schemas:generate` asks every registered source and
+generates the union.
+
+{/* registry-facts:start — generated from the #[IsRegistry] declaration by `splicewire:beam:docs:registries:scaffold`. Rerun the command; do not edit between these markers. */}
+
+- **Root:** `schemas.projection`
+- **Entries:** `Schemastud\DataSchemas\Sources\SchemaSource`
+- **Duplicate keys:** Supersede — a later registration under a taken key replaces the earlier entry, in its place
+- **Population:** Optional — an empty registry is normal
+- **Order:** `100` (display order, ascending)
+- **Declared by:** `Schemastud\DataSchemas\Sources\SchemaProjectionRegistry`
+
+{/* registry-facts:end */}
+
+## Sources are asked at read time
+
+An entry is never a path or a list of class names. It is a `SchemaSource`, which has one method,
+`classes()`, and that method runs when someone reads the registry, not when the source registers.
+This matters because providers boot in an order you don't fully control. A source that enumerated
+its classes during `boot()` would see whatever happened to be loaded at that moment and record it
+forever. A source asked later sees the finished application.
+
+## What ships
+
+The package registers one source in its own provider, under the key `path-scan`: a `PathScanSource`
+that walks the directories in `config('data-schemas.auto_discover_types')` (by default
+`app/Data`) and keeps the Data classes it finds. On a fresh install that is the whole universe, and
+`schemas:generate` behaves exactly as it always has.
+
+## Adding a source
+
+Register from a service provider when your package knows about classes that no path scan would find,
+such as classes listed in a manifest, or shapes held in another registry:
+
+```php
+use Schemastud\DataSchemas\Sources\SchemaProjectionRegistry;
+use Schemastud\DataSchemas\Sources\SchemaSource;
+
+final class ManifestSource implements SchemaSource
+{
+    public function classes(): array
+    {
+        return array_map(
+            fn (string $class) => new ReflectionClass($class),
+            config('acme.shapes', []),
+        );
+    }
+}
+
+public function boot(): void
+{
+    $this->app->make(SchemaProjectionRegistry::class)
+        ->register('acme.manifest', new ManifestSource, by: 'acme/shapes');
+}
+```
+
+Anything that is not a `SchemaSource` is refused at registration with an error naming the key, and
+so is the registry itself (it implements `SchemaSource` too, as the union of its entries, and
+registering it inside itself would recurse forever).
+
+## Two different collisions
+
+The duplicate policy is **supersede**, and it applies to keys. Registering a source under a key that
+is taken replaces it, which is how an application swaps the shipped scan for a narrower one:
+
+```php
+$projection->register('path-scan', new PathScanSource(
+    ['auto_discover_types' => [app_path('Data/Public')]] + config('data-schemas'),
+));
+```
+
+A `PathScanSource` given an explicit array reads only that array, so merge the rest of your
+`data-schemas` config in, as above, or the namespace filters and collectors are lost.
+
+A class that two *different* sources both return is a separate case, and not a conflict: both
+sources stay registered, and the class is generated once, by whichever source was registered first.
+To change which source owns a class, reorder registration or supersede a key.
+
+## Reading it
+
+`schemas:generate` with no options reads the whole registry. With `--class` or `--path` it builds a
+one-off source for that run instead of filtering the union, so `--class` still generates a class no
+registered source knows about. In your own code, `source($key)` and `trySource($key)` select one
+source (the first throws on a miss, the second returns null), `sources()` lists them in registration
+order, and `classes()` returns the deduplicated union.
+
+## Related registries
+
+- [`schemas.strategies`](schemas.strategies) — what happens to each property once a class is chosen.
+- [`schemas.id-parsers`](schemas.id-parsers) — how the generated documents' `$id` refs are read.
+- [The schemas cluster](schemas) — how the registries under `schemas.` fit together.
+
+## Going deeper
+
+[Popcorn registries](/beam/docs/foundations/registries) explains roots, keys and duplicate policies
+in general. The registry's source is
+[`SchemaProjectionRegistry`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Sources/SchemaProjectionRegistry.php).

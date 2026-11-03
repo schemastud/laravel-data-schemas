@@ -1,0 +1,116 @@
+---
+title: Schema id parsers
+segment: schemas.id-parsers
+nav_order: 100
+excerpt: How a package's own spelling of a schema reference is turned into a full schema URI.
+---
+
+# Schema id parsers
+
+`schemas.id-parsers` holds the **ref grammars**: classes that know how to turn a package's own
+spelling of a schema reference into a full namespace URI. Out of the box there are none, and you
+only need one if your package writes schema references in a shape of its own and wants them to
+resolve against whatever authority the application has declared.
+
+{/* registry-facts:start — generated from the #[IsRegistry] declaration by `splicewire:beam:docs:registries:scaffold`. Rerun the command; do not edit between these markers. */}
+
+- **Root:** `schemas.id-parsers`
+- **Entries:** `class-string<Schemastud\DataSchemas\Ids\SchemaIdParser>`
+- **Duplicate keys:** Supersede — a later registration under a taken key replaces the earlier entry, in its place
+- **Population:** Optional — an empty registry is normal
+- **Order:** `100` (display order, ascending)
+- **Declared by:** `Schemastud\DataSchemas\Ids\SchemaIdParsersRegistry`
+
+{/* registry-facts:end */}
+
+## The default grammar is not an entry
+
+Without any registered parser, every reference goes through the package's built-in grammar,
+`RelativeSchemaIdParser`:
+
+- an absolute URI (`https://app.example.com/schemas/invoice/2`) is already the full identity;
+- anything else is relative to `config('data-schemas.base_uri')`, so `invoice/2` becomes
+  `https://app.example.com/schemas/invoice/2`;
+- with `base_uri` set to `false` the application has opted out of an authority, and the ref is used
+  as it is;
+- with no `base_uri` at all a relative ref throws `UnresolvableRelativeSchemaId`, because there is
+  nothing to resolve it against.
+
+That grammar sits *underneath* the registry, not inside it. It accepts every reference, so if it
+were an entry it would either come first and starve every other parser, or come last, where any
+appended parser could shadow it by accident. Kept as the floor, it answers only when nobody else
+claims a reference.
+
+## How a reference is resolved
+
+`SchemaIdResolver` walks the registered parsers in order and asks each `handles($ref)`. The first
+one that says yes parses the reference, and nothing else is consulted. A reference has exactly one
+grammar, so this is a pick-one lookup, not a pipeline: parsers never rewrite each other's output.
+If no parser claims it, the floor grammar does.
+
+A parser that fails to build is skipped rather than fatal, so one broken entry cannot take down
+every schema id in the application.
+
+## Adding a parser
+
+Implement `SchemaIdParser`. Decide `handles()` on the reference alone, and take the authority as an
+argument rather than reading config, so the parser stays usable without a booted application:
+
+```php
+use Schemastud\DataSchemas\Ids\SchemaIdParser;
+use Schemastud\DataSchemas\Ids\UnresolvableRelativeSchemaId;
+use Schemastud\JsonNs\NamespaceUri;
+
+final class AcmeRefParser implements SchemaIdParser
+{
+    public function handles(string $ref): bool
+    {
+        return str_starts_with($ref, 'acme:');
+    }
+
+    public function parse(string $ref, string|bool|null $baseUri): NamespaceUri
+    {
+        $path = 'acme/'.substr($ref, strlen('acme:'));   // acme:invoice/2 → acme/invoice/2
+
+        if ($baseUri === false) {
+            return NamespaceUri::from($path);
+        }
+
+        if (! is_string($baseUri)) {
+            throw new UnresolvableRelativeSchemaId($ref, $baseUri);
+        }
+
+        return NamespaceUri::from(rtrim($baseUri, '/').'/'.$path);
+    }
+}
+```
+
+A parser must answer for all three states of `base_uri`: a URI, `false`, and unset. Then append it
+to the config list from your provider:
+
+```php
+$parsers = config('data-schemas.id_parsers', []);
+
+if (! in_array(AcmeRefParser::class, $parsers, true)) {
+    $parsers[] = AcmeRefParser::class;
+    config(['data-schemas.id_parsers' => $parsers]);
+}
+```
+
+As with [`schemas.strategies`](schemas.strategies), the storage is that config list and keys are
+derived from class names (`acme-ref-parser`), so appending the same class twice changes nothing.
+Registering through `SchemaIdParsersRegistry::register()` also works. On an empty list, the first
+registration through the registry lands keyed rather than appended; the resolver reads both shapes.
+
+## Related registries
+
+- [`schemas.projection`](schemas.projection) — which classes get schemas, and so `$id`s, at all.
+- [The schemas cluster](schemas) — how the registries under `schemas.` fit together.
+
+## Going deeper
+
+[Popcorn registries](/beam/docs/foundations/registries) explains roots, keys and duplicate policies
+in general. The registry's source is
+[`SchemaIdParsersRegistry`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Ids/SchemaIdParsersRegistry.php),
+and the resolver that reads it is
+[`SchemaIdResolver`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Ids/SchemaIdResolver.php).

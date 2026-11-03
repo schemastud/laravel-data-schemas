@@ -1,0 +1,74 @@
+---
+title: The schemas cluster
+segment: schemas
+nav_order: 30
+excerpt: The registries behind schema generation, overlays, lenses and fixtures, and the substrate registries around them.
+---
+
+# The schemas cluster
+
+Everything under `schemas.` belongs to schema projection: turning a typed Data class into a JSON
+Schema, and the machinery that grows out of that one shape. Six of the seven roots are declared by
+[`schemastud/laravel-data-schemas`](https://github.com/schemastud/laravel-data-schemas), which builds
+on spatie/laravel-data and knows nothing about the frameworks above it. You can use every one of
+them in a plain Laravel application.
+
+Which one you reach for:
+
+- **Generate schemas for classes no path scan finds**:
+  [`schemas.projection`](schemas.projection), filled with a `SchemaSource` from a provider.
+- **Add a keyword to every property that carries your attribute**:
+  [`schemas.strategies`](schemas.strategies), appended to `config('data-schemas.strategies')`.
+- **Resolve your package's own spelling of a schema reference**:
+  [`schemas.id-parsers`](schemas.id-parsers), appended to `config('data-schemas.id_parsers')`.
+- **Change a schema or a record for one tenant or locale without forking it**:
+  [`schemas.overlays`](schemas.overlays), filled with overlay documents.
+- **Declare a two-way projection between a record and a rendering of it**:
+  [`schemas.lenses`](schemas.lenses), filled with `LensRegistration`s.
+- **Build Data objects in named states in a test**: [`schemas.fixtures`](schemas.fixtures), filled
+  with `defineShape()` and `defineState()`.
+
+The seventh, `schemas.sources`, is declared by Beam rather than by this package. It holds the tiers
+(such as `fleet`, `db` and `file`) that Beam's schema store reads stored schemas from, and it exists
+only in a Beam application. Its page lives with Beam:
+[`schemas.sources`](https://github.com/splicewire/laravel-beam/blob/main/docs/registries/schemas.sources.mdx).
+
+## How they fit together
+
+Projection decides *which* classes have schemas; strategies decide *what each property says*; id
+parsers decide *how references between schemas resolve*. Those three run inside the generator.
+Overlays and lenses work on the documents that come out: an overlay folds a one-way change over a
+schema or a record, and a lens is the two-way case, with a return trip that can be checked. Fixtures
+sit beside all of it and reuse the same declared shapes to build test objects.
+
+## What a duplicate means here
+
+Most of these **supersede**, because re-registering a key is how an application replaces what a
+package shipped. Two don't. Overlays **admit**, because one key can carry several overlay
+documents and they all apply. Lenses **reject**, because two lenses silently sharing a key is
+exactly the kind of invisible collision the registry exists to prevent.
+
+## The substrate around it
+
+The other schemastud packages each declare registries that build on the same shapes:
+
+- [`frame.resources`](https://github.com/schemastud/laravel-frame/blob/main/docs/registries/frame.resources.mdx)
+  — the producers Frame asks for the resource definitions it draws list, form and detail screens
+  from.
+- [`blockdoc.node-types`](https://github.com/schemastud/laravel-blockdoc/blob/main/docs/registries/blockdoc.node-types.mdx)
+  and
+  [`blockdoc.transforms`](https://github.com/schemastud/laravel-blockdoc/blob/main/docs/registries/blockdoc.transforms.mdx)
+  — the typed blocks a rich document is made of, and the transforms that shape its input
+  ([cluster page](https://github.com/schemastud/laravel-blockdoc/blob/main/docs/registries/blockdoc.mdx)).
+- [`jsonns.namespaces`](https://github.com/schemastud/laravel-json-ns/blob/main/docs/registries/jsonns.namespaces.mdx)
+  — the handler bound to each namespace URI a JSON document can mark a node with.
+- [`jsonref.dereferencers`](https://github.com/schemastud/laravel-json-reference/blob/main/docs/registries/jsonref.dereferencers.mdx)
+  — who follows a reference, chosen by the handle it carries.
+- [`schema-org.projectors`](https://github.com/schemastud/laravel-data-schema-org/blob/main/docs/registries/schema-org.projectors.mdx)
+  — how each Data class becomes schema.org JSON-LD.
+
+## Going deeper
+
+[The layers](/beam/docs/foundations/layers) explains where the schema substrate sits in the family
+and why it knows nothing about the layers above it. [Popcorn registries](/beam/docs/foundations/registries)
+explains roots, keys and duplicate policies in general.

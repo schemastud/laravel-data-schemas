@@ -1,0 +1,98 @@
+---
+title: Lenses
+segment: schemas.lenses
+nav_order: 30
+excerpt: Every declared two-way projection between a canonical record and a rendering of it, with whose truth it is.
+---
+
+# Lenses
+
+`schemas.lenses` lists the **lenses** an application has declared. A lens is a two-way projection
+between a canonical record and a rendering of it: `get` turns the canonical into the rendering, and
+`put` takes an edited rendering back to the canonical. Think of a song record and the timeline an
+editor shows, or a timeline and the smaller plan a third-party service accepts.
+
+The registry is for finding lenses, not for applying them. Nothing looks up "the lens for this
+record" here and runs it. Code that applies a lens keeps calling it directly, and registering is
+what makes the lens visible to everyone else.
+
+{/* registry-facts:start — generated from the #[IsRegistry] declaration by `splicewire:beam:docs:registries:scaffold`. Rerun the command; do not edit between these markers. */}
+
+- **Root:** `schemas.lenses`
+- **Entries:** `Schemastud\DataSchemas\Overlay\Lens\LensRegistration`
+- **Duplicate keys:** Reject — registering a taken key throws
+- **Population:** Optional — an empty registry is normal
+- **Order:** `30` (display order, ascending)
+- **Declared by:** `Schemastud\DataSchemas\Overlay\Lens\LensRegistry`
+
+{/* registry-facts:end */}
+
+## What gets registered
+
+Each entry is a `LensRegistration`:
+
+- **`key`** — a dotted `vendor.lens-name`, such as `audiostud.song-to-timeline`. It is an address in
+  this registry, so it uses dots; a slash is not a legal key character.
+- **`tier`** — whose truth the lens is. `HostApplied` is one application's own convenience: visible
+  everywhere, authoritative nowhere, and another application may map the same record differently.
+  `EngineAuthoritative` is the definition every host is measured against.
+- **`association`** — the lens itself (a `LensAssociation`: the canonical's `@id`, a locator, a
+  direction, a claimed fidelity and the get/put pair), or a closure that builds it on first read.
+- **`evidence`** — sample documents the round-trip laws are checked against.
+- **`owner`** and **`of`** — the declaring package in `vendor/name` form, and a plain-words
+  description for listings.
+
+The key is not the association's `@id`. Two lenses can legitimately project the same canonical, and
+keying by `@id` would make one silently replace the other. The `@id` keeps its slash
+(`audiostud/timeline-otio`), because it is a schema identifier, not an address.
+
+## Registering
+
+Register from a provider's `boot()`. Pass the association and evidence as closures so nothing is
+built until something actually reads the registry:
+
+```php
+use Schemastud\DataSchemas\Overlay\Lens\LensEvidence;
+use Schemastud\DataSchemas\Overlay\Lens\LensRegistration;
+use Schemastud\DataSchemas\Overlay\Lens\LensRegistry;
+use Schemastud\DataSchemas\Overlay\Lens\LensTier;
+
+$this->app->make(LensRegistry::class)->register(new LensRegistration(
+    key: 'acme.order-to-invoice',
+    tier: LensTier::HostApplied,
+    association: fn () => OrderLenses::orderToInvoice(),
+    evidence: new LensEvidence(fn () => [OrderLenses::sampleOrder()]),
+    owner: 'acme/shop',
+    of: 'Order → invoice document',
+));
+```
+
+The duplicate policy is **reject**: a second registration under a taken key throws, naming the
+owner of the first. Two lenses over the same record need two keys. A malformed key throws too, at
+the registration site, where it can be fixed.
+
+## Fidelity is proved, not claimed
+
+An association declares a fidelity, either `LosslessEligible` or `Lossy`, but the registry never
+repeats that claim. `certifiedFidelity($key)` runs the round-trip laws (GetPut and PutGet) against
+the registration's evidence, and answers `Lossy` when the laws fail, when there is no evidence, or
+when the key is unknown. An honest `Lossy` declaration needs no evidence at all.
+
+## Reading it
+
+- `all()` lists every registration in registration order.
+- `get($key)` returns one, or null.
+- `forId($id)` returns *every* lens over one canonical `@id`, rather than choosing one for you.
+- `ofTier(LensTier::EngineAuthoritative)` filters by tier.
+- `describe()` returns flat rows with each lens's tier and certified fidelity, for a listing.
+
+## Related registries
+
+- [`schemas.overlays`](schemas.overlays) — the one-way fold lenses generalise.
+- [The schemas cluster](schemas) — how the registries under `schemas.` fit together.
+
+## Going deeper
+
+The [lens README](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Overlay/Lens/README.md)
+explains associations, the laws and the resolver in full. The registry's source is
+[`LensRegistry`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Overlay/Lens/LensRegistry.php).

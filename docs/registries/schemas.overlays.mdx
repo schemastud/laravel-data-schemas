@@ -1,0 +1,99 @@
+---
+title: Data overlays
+segment: schemas.overlays
+nav_order: 31
+excerpt: Overlay documents by key, the deltas folded over a schema or a record for one tenant, locale or context.
+---
+
+# Data overlays
+
+`schemas.overlays` holds **overlay documents**: small, declarative deltas that change a JSON
+document without editing its source. One schema can serve every tenant, and a tenant that wants a
+different label, an extra widget hint or one field removed gets an overlay instead of a fork. The
+same overlays work on records (instances) as well as schemas.
+
+{/* registry-facts:start — generated from the #[IsRegistry] declaration by `splicewire:beam:docs:registries:scaffold`. Rerun the command; do not edit between these markers. */}
+
+- **Root:** `schemas.overlays`
+- **Entries:** any value (`mixed`)
+- **Duplicate keys:** Admit — every registration is kept; a single-entry read of a shared key refuses as ambiguous
+- **Population:** Optional — an empty registry is normal
+- **Order:** `31` (display order, ascending)
+- **Declared by:** `Schemastud\DataSchemas\Overlay\InMemoryOverlayRegistry`
+
+{/* registry-facts:end */}
+
+## What an overlay looks like
+
+An overlay document is a version marker and an ordered list of **actions**. Each action has a
+JSONPath `target` and exactly one op: `override` replaces the value there, `merge` deep-merges an
+object into it, and `unset` removes it.
+
+```php
+$overlay = [
+    'overlay' => '1.0.0',
+    'actions' => [
+        ['target' => '$.properties.email', 'merge' => ['x-widget' => 'email-input']],
+        ['target' => '$.properties.fax', 'unset' => true],
+    ],
+];
+```
+
+The shape follows the OpenAPI Overlay document, with the three ops in place of its single update
+action. An action with no op, or more than one, is refused when the document is parsed.
+
+## Registering one
+
+Overlays are registered under a key that names the context they apply in. Keys are plain strings,
+and a colon is the convention for a dimension, such as `tenant:acme` or `locale:es-mx`:
+
+```php
+use Schemastud\DataSchemas\Overlay\DataOverlayRegistry;
+
+$this->app->make(DataOverlayRegistry::class)
+    ->register('tenant:acme', $overlay);
+```
+
+You can pass an array or an `OverlayDocument`, and arrays are parsed on the way in. The container
+binds `DataOverlayRegistry` to the in-memory default, which declares this root. A host that keeps
+overlays in a database binds its own implementation.
+
+## Duplicates add, they don't replace
+
+The policy is **admit**: registering a second overlay under a key keeps both. That is deliberate, as
+a key can carry several documents and they all apply. Because a key may hold more than one, read
+through the overlay methods below rather than the single-entry `resolve()`, which refuses a shared
+key as ambiguous.
+
+## Applying overlays
+
+Something has to decide which keys are active for a given request. That is a
+`DataOverlayResolver`, which returns an ordered list of keys. The package binds a
+`StaticOverlayResolver` that always returns a fixed list; a real application binds one that reads
+the current tenant or locale. The order it returns is the order overlays apply, so precedence
+("does tenant beat vertical?") is decided there, by the host, and nowhere else.
+
+```php
+use Schemastud\DataSchemas\Overlay\SchemaOverlayApplier;
+
+$keys = $resolver->resolve($request);                 // ['vertical:healthcare', 'tenant:acme']
+$stack = $overlays->stackFor($keys);                  // every document for those keys, in order
+$schema = (new SchemaOverlayApplier($baseSchema, $stack))->apply();
+```
+
+Within a document, actions apply in order; across the stack, documents apply in order; and the last
+write to a path wins. `InstanceOverlayApplier` does the same over a record's data. Schema overlays
+are always applied on the server, so a client only ever receives the resolved document.
+
+## Related registries
+
+- [`schemas.lenses`](schemas.lenses) — the two-way counterpart, for projections that need a return
+  trip.
+- [The schemas cluster](schemas) — how the registries under `schemas.` fit together.
+
+## Going deeper
+
+The [overlay README](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Overlay/README.md)
+covers the fold and the JSONPath engine behind it. [Popcorn registries](/beam/docs/foundations/registries)
+explains duplicate policies in general. The registry's source is
+[`InMemoryOverlayRegistry`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Overlay/InMemoryOverlayRegistry.php).

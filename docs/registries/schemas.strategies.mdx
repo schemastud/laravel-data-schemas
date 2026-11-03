@@ -1,0 +1,110 @@
+---
+title: Schema strategies
+segment: schemas.strategies
+nav_order: 100
+excerpt: The ordered pipeline every Data property passes through on its way into a JSON Schema.
+---
+
+# Schema strategies
+
+`schemas.strategies` is the property pipeline of the JSON Schema generator. For each property of a
+Data class, the generator builds a base schema from the PHP type, then hands it to every strategy in
+order. Each strategy receives the property and the schema so far, and returns the schema with
+whatever keywords it wants to add. This is how validation attributes become `minLength` and
+`format`, and how other packages stamp their own `x-*` extension keywords without touching the
+generator.
+
+{/* registry-facts:start — generated from the #[IsRegistry] declaration by `splicewire:beam:docs:registries:scaffold`. Rerun the command; do not edit between these markers. */}
+
+- **Root:** `schemas.strategies`
+- **Entries:** `class-string<Schemastud\DataSchemas\Strategies\SchemaStrategy>`
+- **Duplicate keys:** Supersede — a later registration under a taken key replaces the earlier entry, in its place
+- **Population:** Optional — an empty registry is normal
+- **Order:** `100` (display order, ascending)
+- **Declared by:** `Schemastud\DataSchemas\Strategies\SchemaStrategiesRegistry`
+
+{/* registry-facts:end */}
+
+## What ships
+
+Three strategies, in this order:
+
+- `ValidationAttributeStrategy` turns spatie/laravel-data validation attributes (`#[Max]`,
+  `#[Email]`, `#[In]` …) into JSON Schema keywords.
+- `MigrationAttributesStrategy` projects `#[WasNamed]` and `#[MigrateWith]` into `x-migrate-from` and
+  `x-migrate`, for versioned classes only. Everything else passes through unchanged.
+- `KeywordAttributesStrategy` copies repeatable `#[Keyword('x-…', $value)]` annotations onto the
+  property, the generic channel for an extension keyword that has no strategy of its own.
+
+Other packages append their own. A schema-driven UI package, for example, appends strategies that
+read its widget and read-only attributes and emit `x-widget` keywords.
+
+## The storage is a config list
+
+This registry has no storage of its own. Its entries live in `config('data-schemas.strategies')`, a
+plain ordered list of class names, and the registry is a declared view over that list. Two
+consequences follow:
+
+- **Order is the pipeline.** The list's order is the order the generator runs, and a later strategy
+  sees what earlier ones wrote. Appending puts yours last.
+- **Keys come from class names.** Each entry is keyed by its class basename, converted to kebab
+  case, so `ValidationAttributeStrategy` is `schemas.strategies.validation-attribute-strategy`.
+  Appending the same class twice is a no-op, and that is the supersede policy at work.
+
+## Adding a strategy
+
+Write a class implementing `SchemaStrategy`. It must work without a booted application, because the
+generator is constructed bare in unit tests, so read settings from the context it is handed rather
+than from `config()`:
+
+```php
+use ReflectionProperty;
+use Schemastud\DataSchemas\Strategies\SchemaStrategy;
+use Schemastud\DataSchemas\Strategies\SchemaStrategyContext;
+
+final class SensitiveFieldStrategy implements SchemaStrategy
+{
+    public function apply(ReflectionProperty $property, array $schema, SchemaStrategyContext $context): array
+    {
+        if ($property->getAttributes(Sensitive::class) !== []) {
+            $schema['x-sensitive'] = true;
+        }
+
+        return $schema;
+    }
+}
+```
+
+Then append it from your provider's `boot()`. The list is read when a generator runs, not when
+it is built, so boot-time appends are in place before anything generates:
+
+```php
+$strategies = config('data-schemas.strategies', []);
+
+if (! in_array(SensitiveFieldStrategy::class, $strategies, true)) {
+    $strategies[] = SensitiveFieldStrategy::class;
+    config(['data-schemas.strategies' => $strategies]);
+}
+```
+
+Every package in the family that contributes a strategy does it this way, and registering through
+`SchemaStrategiesRegistry::register()` writes to the same list. A strategy should be a strict no-op
+for properties it has nothing to say about; the pipeline runs for every property of every class.
+
+## Replacing or removing one
+
+Because the list is plain config, an application that wants a different pipeline publishes the
+config file and writes the list it wants. Registering a class under an existing key replaces that
+entry in its position, which keeps the pipeline's order intact.
+
+## Related registries
+
+- [`schemas.projection`](schemas.projection) — which classes the generator runs over.
+- [The schemas cluster](schemas) — how the registries under `schemas.` fit together.
+
+## Going deeper
+
+[Popcorn registries](/beam/docs/foundations/registries) explains roots and duplicate policies in
+general, and [what is not a registry](/beam/docs/foundations/not-a-registry) covers the neighbouring
+mechanisms, plain config arrays among them. The registry's source is
+[`SchemaStrategiesRegistry`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Strategies/SchemaStrategiesRegistry.php).

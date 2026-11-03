@@ -1,0 +1,103 @@
+---
+title: Schema fixtures
+segment: schemas.fixtures
+nav_order: 100
+excerpt: Named fixture states for a Data class, so a test can build `PlanData::factory()->enterprise()->make()`.
+---
+
+# Schema fixtures
+
+`schemas.fixtures` gives Data classes model-factory ergonomics. A class that uses the `HasFixtures`
+trait gets a `::factory()` that can build instances in named **states**, and the states live here,
+where any package (or your application) can add one:
+
+```php
+PlanData::factory()->enterprise()->make();
+PlanData::factory()->count(3)->budgetCapped()->make();
+```
+
+It is a test-time facility. It builds objects; it never writes rows.
+
+{/* registry-facts:start — generated from the #[IsRegistry] declaration by `splicewire:beam:docs:registries:scaffold`. Rerun the command; do not edit between these markers. */}
+
+- **Root:** `schemas.fixtures`
+- **Entries:** any value (`mixed`)
+- **Duplicate keys:** Supersede — a later registration under a taken key replaces the earlier entry, in its place
+- **Population:** Optional — an empty registry is normal
+- **Order:** `100` (display order, ascending)
+- **Declared by:** `Schemastud\DataSchemas\Fixtures\FixtureIndex`
+
+{/* registry-facts:end */}
+
+## One keyspace, two levels
+
+```
+schemas.fixtures.{shape}            the shape: its defaults and its ordered hooks
+schemas.fixtures.{shape}.{state}    one named state
+```
+
+The two levels compose differently, which is why they are not siblings. A **state** is addressable,
+because a caller names it, and states apply in the order the caller chains them. A **hook** is a
+positional function in the shape's list; hooks have no keys of their own and run in the order they
+were given. A build applies the defaults, then the states in call order, then any attributes passed
+to `make()`, then the hooks, so a hook can stamp something no state should have to remember.
+
+`{shape}` is whatever key the class reports. By default that is its class key, which includes the
+namespace, so two classes that share a short name never collide. A tier with shorter names
+overrides `fixtureKey()` on the class: Beam, for example, keys a Data class that backs one of its
+resources by the resource name.
+
+## Defaults from the schema
+
+A shape's defaults are whatever its `defineShape()` closure returns, and an unregistered shape
+starts from an empty array. `HasFixtures` also offers `fixtureDefaults()`, which reads the class's
+own `#[Example]` values, the same examples the JSON Schema generator emits. The factory does not
+apply them on its own, so pass them in when you define the shape:
+
+```php
+app(FixtureIndex::class)->defineShape('plans', fn () => PlanData::fixtureDefaults());
+```
+
+## Registering states
+
+Use the two helpers on `FixtureIndex`, from a provider or a test's setup. The first argument is the
+shape key, here `plans`, for a class whose `fixtureKey()` returns that name:
+
+```php
+use Schemastud\DataSchemas\Fixtures\FixtureIndex;
+
+app(FixtureIndex::class)
+    ->defineShape('plans', fn () => ['name' => 'Starter', 'slug' => 'starter'])
+    ->defineState('plans', 'enterprise', fn (array $attributes) => ['name' => 'Enterprise'])
+    ->defineState('plans', 'budget-capped', fn (array $attributes) => ['limit' => 99.0]);
+```
+
+A state is a closure that receives the attributes so far and returns the ones it changes. Call it
+as a method: `->budgetCapped()` finds the state registered as `budget-capped`. An unknown state
+throws and lists the known ones, rather than building an object with the state silently missing.
+
+## Overriding a package's state
+
+The policy is **supersede**. Package providers boot before your application's, so your application
+registers last, and its state wins under the same key, the same way a container binding overrides a
+package default. The displaced entry stays readable through `supersededAt($key)`, so a collision
+between two packages is visible rather than silent.
+
+## What it does not do
+
+There is no `create()`. A fixture builds a Data object through spatie/laravel-data's own creation
+path, so validation, name mapping and casts configured on the factory all apply, but it creates no
+rows, keys or relationships. A test that needs persisted records still wants a model factory.
+
+## Related registries
+
+- [`schemas.projection`](schemas.projection) — which classes the schema generator projects.
+- [The schemas cluster](schemas) — how the registries under `schemas.` fit together.
+
+## Going deeper
+
+[Popcorn registries](/beam/docs/foundations/registries) explains nested keys and supersession in
+general. The registry's source is
+[`FixtureIndex`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Fixtures/FixtureIndex.php),
+and the factory is
+[`FixtureFactory`](https://github.com/schemastud/laravel-data-schemas/blob/main/src/Fixtures/FixtureFactory.php).

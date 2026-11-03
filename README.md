@@ -309,7 +309,7 @@ Override or extend validation attribute mappings:
 Implement the `PathGenerator` interface:
 
 ```php
-use Rushing\LaravelDataSchemas\PathGenerators\PathGenerator;
+use Schemastud\DataSchemas\PathGenerators\PathGenerator;
 
 class ApiPathGenerator implements PathGenerator
 {
@@ -331,7 +331,7 @@ Register in config:
 Implement the `Generator` interface for custom schema formats:
 
 ```php
-use Rushing\LaravelDataSchemas\Generators\Generator;
+use Schemastud\DataSchemas\Generators\Generator;
 
 class OpenApiGenerator implements Generator
 {
@@ -346,6 +346,30 @@ class OpenApiGenerator implements Generator
     }
 }
 ```
+
+## Registries
+
+This package declares six registries. [The schemas cluster](docs/registries/schemas.mdx) page shows
+how they fit together.
+
+- [`schemas.strategies`](docs/registries/schemas.strategies.mdx): the ordered strategies every Data
+  property passes through on its way into a JSON Schema.
+- [`schemas.projection`](docs/registries/schemas.projection.mdx): where your schemas come from, one
+  source per way of finding the Data classes to project. The package registers the `path-scan`
+  source.
+- [`schemas.id-parsers`](docs/registries/schemas.id-parsers.mdx): how a package's own spelling of a
+  schema reference becomes a full schema URI.
+- [`schemas.overlays`](docs/registries/schemas.overlays.mdx): overlay documents folded over a schema
+  or a record for one tenant, locale or context.
+- [`schemas.lenses`](docs/registries/schemas.lenses.mdx): the declared two-way projections between a
+  canonical record and a rendering of it.
+- [`schemas.fixtures`](docs/registries/schemas.fixtures.mdx): named fixture states for a Data class.
+
+It also registers into one registry it doesn't own:
+
+- [`pipelines`](https://github.com/stephenr85/laravel-pipeline-registry/blob/main/docs/registries/pipelines.mdx),
+  from `rushing/laravel-pipeline-registry`: the `resources:schemastud` pipeline, merged from
+  `config/pipelines/resources.php` when that package is installed.
 
 ## Requirements
 

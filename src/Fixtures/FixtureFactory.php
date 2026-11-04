@@ -160,6 +160,12 @@ class FixtureFactory extends CreationContextFactory
      * REGISTRATION order. Hooks run last so a shape can stamp something no individual state should
      * have to remember.
      *
+     * Defaults are the REGISTERED ones when a shape registers any, and they replace the schema's
+     * rather than merging over them. Otherwise they are the class's own `fixtureDefaults()` — its
+     * `#[Example]` values — reached through spatie's `$dataClass`, which this factory already holds,
+     * so the shape key needs no reverse lookup to a class. A class without {@see HasFixtures} has no
+     * such method and starts from `[]`.
+     *
      * @param  array<string, mixed>  $attributes
      * @return array<string, mixed>
      */
@@ -167,7 +173,11 @@ class FixtureFactory extends CreationContextFactory
     {
         $defaults = $this->index->defaultsFor($this->shape);
 
-        $built = $defaults ? $defaults() : [];
+        $built = match (true) {
+            $defaults !== null => $defaults(),
+            method_exists($this->dataClass, 'fixtureDefaults') => $this->dataClass::fixtureDefaults(),
+            default => [],
+        };
 
         foreach ($this->states as $state) {
             $built = array_merge($built, $state($built));

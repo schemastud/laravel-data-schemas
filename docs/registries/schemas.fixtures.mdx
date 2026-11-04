@@ -51,14 +51,34 @@ resources by the resource name.
 
 ## Defaults from the schema
 
-A shape's defaults are whatever its `defineShape()` closure returns, and an unregistered shape
-starts from an empty array. `HasFixtures` also offers `fixtureDefaults()`, which reads the class's
-own `#[Example]` values, the same examples the JSON Schema generator emits. The factory does not
-apply them on its own, so pass them in when you define the shape:
+A class that uses `HasFixtures` needs no registration to build. With nothing defined for its
+shape, the factory starts from the class's own `#[Example]` values, the same examples the JSON
+Schema generator emits, so states are often the only thing you register:
 
 ```php
-app(FixtureIndex::class)->defineShape('plans', fn () => PlanData::fixtureDefaults());
+class PlanData extends StudData
+{
+    use HasFixtures;
+
+    public function __construct(
+        #[Example('Starter')]
+        public string $name = '',
+    ) {}
+}
+
+PlanData::factory()->make()->name; // 'Starter'
 ```
+
+`PlanData::fixtureDefaults()` returns those values directly. To use different defaults, define the
+shape. A `defineShape()` closure replaces the example values rather than merging over them, so
+spread `fixtureDefaults()` into it if you want to keep some. Here `plans` is the class's shape key:
+
+```php
+app(FixtureIndex::class)->defineShape('plans', fn () => [...PlanData::fixtureDefaults(), 'slug' => 'starter']);
+```
+
+A Data class without the trait has no example values to fall back on, and starts from an empty
+array until its shape is defined.
 
 ## Registering states
 

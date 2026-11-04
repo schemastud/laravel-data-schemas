@@ -100,19 +100,37 @@ class FixtureIndex implements Nested, Registry
         return $this;
     }
 
+    /**
+     * The REGISTERED defaults, or null when none are. Null is not "start empty": {@see FixtureFactory}
+     * then falls back to the class's own `fixtureDefaults()`, which is what makes a shape work with
+     * zero registration.
+     */
     public function defaultsFor(string $shape): ?Closure
     {
-        $entry = $this->store->tryResolve("schemas.fixtures.{$shape}");
+        $entry = $this->shapeNode($shape);
 
-        return is_array($entry) && $entry['defaults'] instanceof Closure ? $entry['defaults'] : null;
+        return is_array($entry) && ($entry['defaults'] ?? null) instanceof Closure ? $entry['defaults'] : null;
     }
 
     /** @return list<Closure(array<string, mixed>): array<string, mixed>> */
     public function hooksFor(string $shape): array
     {
-        $entry = $this->store->tryResolve("schemas.fixtures.{$shape}");
+        $entry = $this->shapeNode($shape);
 
         return is_array($entry) && is_array($entry['hooks'] ?? null) ? array_values($entry['hooks']) : [];
+    }
+
+    /**
+     * The shape node read EXACTLY. A shape that registers states but no shape node is a branch, and
+     * `resolve()` on a branch throws `AmbiguousRegistryMatch` rather than answering absent; `has()` is
+     * the kernel's exact-match question. Under `Supersede` one entry lives at a key, so the resolve
+     * after it is unambiguous.
+     */
+    private function shapeNode(string $shape): mixed
+    {
+        $key = "schemas.fixtures.{$shape}";
+
+        return $this->store->has($key) ? $this->store->resolve($key) : null;
     }
 
     public function stateFor(string $shape, string $state): ?Closure

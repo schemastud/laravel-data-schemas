@@ -7,6 +7,7 @@ use Rushing\Popcorn\Registries\ClassKey;
 use Schemastud\DataSchemas\Fixtures\FixtureFactory;
 use Schemastud\DataSchemas\Fixtures\FixtureIndex;
 use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
+use Schemastud\DataSchemas\Tests\Fixtures\FixturePlanData;
 use Schemastud\DataSchemas\Tests\Fixtures\FixtureShapeData;
 use Schemastud\DataSchemas\Tests\Fixtures\ResourceKeyedShapeData;
 use Spatie\LaravelData\LaravelDataServiceProvider;
@@ -79,5 +80,72 @@ class HasFixturesTest extends TestCase
 
         $this->assertArrayHasKey('name', $defaults);
         $this->assertSame('Example Name', $defaults['name']);
+    }
+
+    /** ...and the factory actually builds from them: nothing is registered for this shape. */
+    public function test_an_unregistered_shape_builds_from_its_example_values(): void
+    {
+        $index = app(FixtureIndex::class);
+        $this->assertNull($index->defaultsFor((string) ClassKey::of(FixtureShapeData::class)));
+
+        $this->assertSame('Example Name', FixtureShapeData::factory()->make()->name);
+    }
+
+    /**
+     * Registered defaults REPLACE the schema's, exactly as before the fallback existed: they are not
+     * merged over it, so a registration that omits `name` does not get the `#[Example]` value back.
+     */
+    public function test_registered_defaults_beat_the_schema_defaults(): void
+    {
+        app(FixtureIndex::class)->defineShape('plans', fn () => ['limit' => 5.0]);
+
+        $built = ResourceKeyedShapeData::factory()->raw();
+
+        $this->assertSame(['limit' => 5.0], $built);
+    }
+
+    public function test_explicit_attributes_beat_both_the_schema_and_the_registered_defaults(): void
+    {
+        $this->assertSame('Given', FixtureShapeData::factory()->make(['name' => 'Given'])->name);
+
+        app(FixtureIndex::class)->defineShape('plans', fn () => ['name' => 'Starter']);
+        $this->assertSame('Given', ResourceKeyedShapeData::factory()->make(['name' => 'Given'])->name);
+    }
+
+    public function test_states_apply_over_the_schema_defaults(): void
+    {
+        $key = (string) ClassKey::of(FixtureShapeData::class);
+        $seen = null;
+
+        app(FixtureIndex::class)->defineState($key, 'capped', function (array $built) use (&$seen) {
+            $seen = $built;
+
+            return ['limit' => 10.0];
+        });
+
+        $shape = FixtureShapeData::factory()->capped()->make();
+
+        $this->assertSame(['name' => 'Example Name'], $seen, 'the state receives the schema defaults');
+        $this->assertSame('Example Name', $shape->name);
+        $this->assertSame(10.0, $shape->limit);
+    }
+
+    /** A shape node that carries hooks but no defaults closure still starts from the schema. */
+    public function test_hooks_apply_over_the_schema_defaults(): void
+    {
+        $key = (string) ClassKey::of(FixtureShapeData::class);
+
+        app(FixtureIndex::class)->register("schemas.fixtures.{$key}", [
+            'defaults' => null,
+            'hooks' => [fn (array $a) => ['name' => $a['name'].'-hooked']],
+        ]);
+
+        $this->assertSame('Example Name-hooked', FixtureShapeData::factory()->make()->name);
+    }
+
+    /** A Data class without the trait has no `fixtureDefaults()`, so it still starts from `[]`. */
+    public function test_a_class_without_the_trait_still_starts_empty(): void
+    {
+        $this->assertSame([], FixtureFactory::promote(FixturePlanData::factory(), 'unregistered', new FixtureIndex)->raw());
     }
 }

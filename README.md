@@ -328,23 +328,64 @@ Register in config:
 
 ### Custom Generator
 
-Implement the `Generator` interface for custom schema formats:
+Implement the `Generator` interface for custom schema formats. Besides `canGenerate()` and
+`generate()`, a generator returns request, response and strict-LLM variants of itself:
 
 ```php
+use ReflectionClass;
 use Schemastud\DataSchemas\Generators\Generator;
 
 class OpenApiGenerator implements Generator
 {
+    private string $mode = 'collapsed';
+
+    /** @param array<string, mixed> $config the `data-schemas` config, passed in by the generator chain */
+    public function __construct(private array $config = []) {}
+
     public function canGenerate(ReflectionClass $class): bool
     {
-        // Your logic
+        return str_starts_with($class->getName(), 'App\\Api\\');
     }
 
     public function generate(ReflectionClass $class): array
     {
-        // Generate OpenAPI schema format
+        // Generate an OpenAPI schema for $class, honouring $this->mode
+        return ['type' => 'object', 'title' => $class->getShortName()];
+    }
+
+    public function forRequest(): static
+    {
+        return $this->schemaMode('request');
+    }
+
+    public function forResponse(): static
+    {
+        return $this->schemaMode('response');
+    }
+
+    public function forLlmStrict(): static
+    {
+        return $this->schemaMode('llm_strict');
+    }
+
+    public function schemaMode(string $mode): static
+    {
+        $clone = clone $this;
+        $clone->mode = $mode;
+
+        return $clone;
     }
 }
+```
+
+Register it in config. The first generator whose `canGenerate()` accepts a class handles it, so put
+a narrower generator before the default:
+
+```php
+'generators' => [
+    App\Generators\OpenApiGenerator::class,
+    Schemastud\DataSchemas\Generators\JsonSchemaGenerator::class,
+],
 ```
 
 ## Registries

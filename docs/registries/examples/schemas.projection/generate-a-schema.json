@@ -1,0 +1,101 @@
+{
+    "keys": [
+        "schemas.projection.path-scan",
+        "schemas.projection.acme.manifest"
+    ],
+    "classes": [
+        "Schemastud\\DataSchemas\\Tests\\Fixtures\\SampleData"
+    ],
+    "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "title": "SampleData",
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "Human-readable title.",
+                "maxLength": 255
+            },
+            "email": {
+                "type": "string",
+                "format": "email",
+                "examples": [
+                    "user@example.com"
+                ]
+            },
+            "uuid": {
+                "type": "string",
+                "format": "uuid",
+                "examples": [
+                    "11111111-1111-1111-1111-111111111111"
+                ]
+            },
+            "bio": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            },
+            "nickname": {
+                "type": "string"
+            },
+            "user": {
+                "anyOf": [
+                    {
+                        "$ref": "#/$defs/UserData"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "readOnly": true,
+                "x-lazy": true
+            },
+            "status": {
+                "$ref": "#/$defs/StatusEnum"
+            },
+            "collaborators": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/$defs/UserData"
+                }
+            }
+        },
+        "description": "A representative resource exercising every mapping rule.",
+        "required": [
+            "title",
+            "email",
+            "uuid",
+            "bio",
+            "status",
+            "collaborators"
+        ],
+        "$id": "SampleData",
+        "$defs": {
+            "UserData": {
+                "type": "object",
+                "title": "UserData",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "StatusEnum": {
+                "type": "string",
+                "title": "StatusEnum",
+                "enum": [
+                    "draft",
+                    "published"
+                ]
+            }
+        }
+    }
+}

@@ -121,7 +121,8 @@
     },
     "scripts": {
         "test": "@php vendor/bin/phpunit",
-        "pint": "@php -d memory_limit=512M vendor/bin/pint"
+        "pint": "@php -d memory_limit=512M vendor/bin/pint",
+        "docs:examples": "@php tests/regenerate-data-examples.php"
     },
     "suggest": {
         "spatie/typescript-transformer": "^3.3 required when registering the optional MorphUnionTransformer."

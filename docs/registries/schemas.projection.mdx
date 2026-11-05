@@ -98,6 +98,147 @@ registered source knows about. In your own code, `source($key)` and `trySource($
 source (the first throws on a miss, the second returns null), `sources()` lists them in registration
 order, and `classes()` returns the deduplicated union.
 
+## What a reader sees, captured
+
+This example registers a second source beside the shipped `path-scan`, naming one Data class, then
+reads the registry the way `schemas:generate` does: the sources, the union of their classes, and the
+generated document for the class. `SampleData` is the package's representative fixture, a resource
+that exercises every mapping rule. The example app has nothing under `app/Data`, so `path-scan` adds
+no classes and the union is the one class the new source named. The JSON is the real output of the
+PHP beside it, captured by the package and re-checked by its test suite.
+
+{/* data-example:start generate-a-schema — captured output; regenerate it, do not edit between these markers. */}
+
+<DataExample source="docs/registries/examples/schemas.projection/generate-a-schema.php">
+
+```php
+use Schemastud\DataSchemas\Generators\Generator;
+use Schemastud\DataSchemas\Sources\ExplicitClassSource;
+use Schemastud\DataSchemas\Sources\SchemaProjectionRegistry;
+use Schemastud\DataSchemas\Tests\Fixtures\SampleData;
+
+// A package adds a source beside the shipped path scan, naming one Data class.
+$projection = app(SchemaProjectionRegistry::class)
+    ->register('acme.manifest', new ExplicitClassSource(SampleData::class), by: 'acme/shapes');
+
+// What `schemas:generate` would read: every source, the union of their classes, and the document for each.
+$classes = $projection->classes();
+
+return [
+    'keys' => array_map('strval', $projection->keys()),
+    'classes' => array_map(fn (ReflectionClass $class) => $class->getName(), array_values($classes)),
+    'schema' => app(Generator::class)->generate(new ReflectionClass(SampleData::class)),
+];
+```
+
+```json
+{
+    "keys": [
+        "schemas.projection.path-scan",
+        "schemas.projection.acme.manifest"
+    ],
+    "classes": [
+        "Schemastud\\DataSchemas\\Tests\\Fixtures\\SampleData"
+    ],
+    "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "title": "SampleData",
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "Human-readable title.",
+                "maxLength": 255
+            },
+            "email": {
+                "type": "string",
+                "format": "email",
+                "examples": [
+                    "user@example.com"
+                ]
+            },
+            "uuid": {
+                "type": "string",
+                "format": "uuid",
+                "examples": [
+                    "11111111-1111-1111-1111-111111111111"
+                ]
+            },
+            "bio": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            },
+            "nickname": {
+                "type": "string"
+            },
+            "user": {
+                "anyOf": [
+                    {
+                        "$ref": "#/$defs/UserData"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "readOnly": true,
+                "x-lazy": true
+            },
+            "status": {
+                "$ref": "#/$defs/StatusEnum"
+            },
+            "collaborators": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/$defs/UserData"
+                }
+            }
+        },
+        "description": "A representative resource exercising every mapping rule.",
+        "required": [
+            "title",
+            "email",
+            "uuid",
+            "bio",
+            "status",
+            "collaborators"
+        ],
+        "$id": "SampleData",
+        "$defs": {
+            "UserData": {
+                "type": "object",
+                "title": "UserData",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "StatusEnum": {
+                "type": "string",
+                "title": "StatusEnum",
+                "enum": [
+                    "draft",
+                    "published"
+                ]
+            }
+        }
+    }
+}
+```
+
+</DataExample>
+
+{/* data-example:end generate-a-schema */}
+
 ## Related registries
 
 - [`schemas.strategies`](schemas.strategies) — what happens to each property once a class is chosen.

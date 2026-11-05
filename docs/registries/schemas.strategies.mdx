@@ -51,7 +51,9 @@ consequences follow:
   sees what earlier ones wrote. Appending puts yours last.
 - **Keys come from class names.** Each entry is keyed by its class basename, converted to kebab
   case, so `ValidationAttributeStrategy` is `schemas.strategies.validation-attribute-strategy`.
-  Appending the same class twice is a no-op, and that is the supersede policy at work.
+  Appending the same class twice is a no-op, and that is the
+  [**duplicate-key policy**](/beam/docs/foundations/registries#key-policies), **supersede**, at
+  work.
 
 ## Adding a strategy
 

@@ -62,10 +62,10 @@ overlays in a database binds its own implementation.
 
 ## Duplicates add, they don't replace
 
-The policy is **admit**: registering a second overlay under a key keeps both. That is deliberate, as
-a key can carry several documents and they all apply. Because a key may hold more than one, read
-through the overlay methods below rather than the single-entry `resolve()`, which refuses a shared
-key as ambiguous.
+The [**duplicate-key policy**](/beam/docs/foundations/registries#key-policies) is **admit**:
+registering a second overlay under a key keeps both. That is deliberate, as a key can carry several
+documents and they all apply. Because a key may hold more than one, read through the overlay methods
+below rather than the single-entry `resolve()`, which refuses a shared key as ambiguous.
 
 ## Applying overlays
 

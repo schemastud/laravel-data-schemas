@@ -35,9 +35,8 @@ Each entry is a `LensRegistration`:
 
 - **`key`** — a dotted `vendor.lens-name`, such as `audiostud.song-to-timeline`. It is an address in
   this registry, so it uses dots; a slash is not a legal key character.
-- **`tier`** — whose truth the lens is. `HostApplied` is one application's own convenience: visible
-  everywhere, authoritative nowhere, and another application may map the same record differently.
-  `EngineAuthoritative` is the definition every host is measured against.
+- **`tier`** — whose truth the lens is, `HostApplied` or `EngineAuthoritative`. The tiers section
+  below explains both.
 - **`association`** — the lens itself (a `LensAssociation`: the canonical's `@id`, a locator, a
   direction, a claimed fidelity and the get/put pair), or a closure that builds it on first read.
 - **`evidence`** — sample documents the round-trip laws are checked against.
@@ -47,6 +46,35 @@ Each entry is a `LensRegistration`:
 The key is not the association's `@id`. Two lenses can legitimately project the same canonical, and
 keying by `@id` would make one silently replace the other. The `@id` keeps its slash
 (`audiostud/timeline-otio`), because it is a schema identifier, not an address.
+
+## Tiers: whose truth a lens is
+
+Two applications can look at the same canonical record and render it differently, and both can be
+right for their own purposes. The tier is how a lens says which kind of answer it is.
+
+- **Host-applied** (`LensTier::HostApplied`) is one application's own mapping. That application
+  declares it and applies it at its own call sites, and it is true only of that application's data.
+  It is visible to everyone who reads the registry, but it is authoritative nowhere. If another
+  application maps the same `@id` differently, the two are not in conflict, and neither one is the
+  meaning of the record.
+- **Engine-authoritative** (`LensTier::EngineAuthoritative`) is a projection the engine itself stands
+  behind. It defines the mapping for every host, so a host that disagrees with it is wrong, not
+  merely different.
+
+**Registering is discoverability, not endorsement.** A lens joins the registry so that someone
+searching for lens usage finds it. The tier keeps that visibility from reading as a blessing: a
+host-applied lens listed beside an engine-authoritative one has not been promoted by being listed.
+
+Two things are worth knowing today:
+
+- **Nothing enforces anything by tier yet.** The tier is a recorded claim that readers can filter on
+  with `ofTier()`. No code path refuses, prefers or overrides a lens because of its tier.
+- **No engine-authoritative lens exists yet.** The live registrations are host-applied lenses
+  declared by one application. The engine-authoritative tier is there so the first such binding has
+  somewhere honest to go, without a host-applied lens being mistaken for it in the meantime.
+
+Use `HostApplied` for a lens your own application declares. Reserve `EngineAuthoritative` for a
+projection an engine package owns and stands behind for every host.
 
 ## Registering
 
@@ -69,9 +97,10 @@ $this->app->make(LensRegistry::class)->register(new LensRegistration(
 ));
 ```
 
-The duplicate policy is **reject**: a second registration under a taken key throws, naming the
-owner of the first. Two lenses over the same record need two keys. A malformed key throws too, at
-the registration site, where it can be fixed.
+The [**duplicate-key policy**](/beam/docs/foundations/registries#key-policies) is **reject**: a
+second registration under a taken key throws, naming the owner of the first. Two lenses over the
+same record need two keys. A malformed key throws too, at the registration site, where it can be
+fixed.
 
 ## Fidelity is proved, not claimed
 

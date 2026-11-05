@@ -73,8 +73,9 @@ registering it inside itself would recurse forever).
 
 ## Two different collisions
 
-The duplicate policy is **supersede**, and it applies to keys. Registering a source under a key that
-is taken replaces it, which is how an application swaps the shipped scan for a narrower one:
+The [**duplicate-key policy**](/beam/docs/foundations/registries#key-policies) is
+**supersede**, and it applies to keys. Registering a source under a key that is taken replaces it,
+which is how an application swaps the shipped scan for a narrower one:
 
 ```php
 $projection->register('path-scan', new PathScanSource(

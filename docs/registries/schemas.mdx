@@ -43,14 +43,15 @@ sit beside all of it and reuse the same declared shapes to build test objects.
 
 ## What a duplicate means here
 
-Most of these **supersede**, because re-registering a key is how an application replaces what a
-package shipped. Two don't. Overlays **admit**, because one key can carry several overlay
-documents and they all apply. Lenses **reject**, because two lenses silently sharing a key is
-exactly the kind of invisible collision the registry exists to prevent.
+The [**duplicate-key policy**](/beam/docs/foundations/registries#key-policies) of most of these
+is **supersede**, because re-registering a key is how an application replaces what a package
+shipped. Two don't. Overlays **admit**, because one key can carry several overlay documents and they
+all apply. Lenses **reject**, because two lenses silently sharing a key is exactly the kind of
+invisible collision the registry exists to prevent.
 
 ## The substrate around it
 
-The other schemastud packages each declare registries that build on the same shapes:
+The other schemastud.io packages each declare registries that build on the same shapes:
 
 - [`frame.resources`](https://github.com/schemastud/laravel-frame/blob/main/docs/registries/frame.resources.mdx)
   — the producers Frame asks for the resource definitions it draws list, form and detail screens

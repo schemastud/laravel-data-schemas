@@ -100,10 +100,11 @@ throws and lists the known ones, rather than building an object with the state s
 
 ## Overriding a package's state
 
-The policy is **supersede**. Package providers boot before your application's, so your application
-registers last, and its state wins under the same key, the same way a container binding overrides a
-package default. The displaced entry stays readable through `supersededAt($key)`, so a collision
-between two packages is visible rather than silent.
+The [**duplicate-key policy**](/beam/docs/foundations/registries#key-policies) is
+**supersede**. Package providers boot before your application's, so your application registers last,
+and its state wins under the same key, the same way a container binding overrides a package default.
+The displaced entry stays readable through `supersededAt($key)`, so a collision between two packages
+is visible rather than silent.
 
 ## What it does not do
 

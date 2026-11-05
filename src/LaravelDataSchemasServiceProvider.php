@@ -5,6 +5,7 @@ namespace Schemastud\DataSchemas;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Rushing\PipelineRegistry\PipelineRegistry;
+use Rushing\Popcorn\Registries\Registrant;
 use Schemastud\DataSchemas\Commands\GenerateJsonSchemaCommand;
 use Schemastud\DataSchemas\Commands\SchemaCheckCommand;
 use Schemastud\DataSchemas\Commands\SchemaFreezeCommand;
@@ -35,6 +36,11 @@ use Schemastud\DataSchemas\Support\SchemaDisk;
 class LaravelDataSchemasServiceProvider extends ServiceProvider
 {
     public function register(): void
+    {
+        Registrant::scoped('schemastud/laravel-data-schemas', $this->registerScoped(...));
+    }
+
+    private function registerScoped(): void
     {
         $this->mergeConfigFrom(
             __DIR__.'/../config/data-schemas.php',
@@ -165,6 +171,11 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Registrant::scoped('schemastud/laravel-data-schemas', $this->bootScoped(...));
+    }
+
+    private function bootScoped(): void
+    {
         $this->mountSchemaDoor();
 
         // Seed the projection registry with the ONE source this package has: the `auto_discover_types`
@@ -177,7 +188,7 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         $projection = $this->app->make(SchemaProjectionRegistry::class);
 
         if (! $projection->has('path-scan')) {
-            $projection->register('path-scan', new PathScanSource, by: self::class);
+            $projection->register('path-scan', new PathScanSource, by: 'schemastud/laravel-data-schemas');
         }
 
         // Contribute the resources:* projection pipelines (the open,

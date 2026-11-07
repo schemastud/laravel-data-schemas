@@ -64,6 +64,54 @@ class DeclaredRenameKeepsValuesTest extends TestCase
         $this->assertSame(['blurb' => 'V1-VALUE', 'extra' => ''], $result->migrated);
     }
 
+    // orch-peer REVISE (17:15Z): renames are SIMULTANEOUS. Each new field takes its old field's value from the stored
+    // payload; applied one after another, a chain read an already-overwritten field and lost a value.
+    public function test_an_overlapping_rename_chain_keeps_both_values(): void
+    {
+        $result = MigrationLadder::default()->migrate(
+            ['a' => 'VALUE-A', 'b' => 'VALUE-B'],
+            $this->schema(1, ['a' => ['type' => 'string'], 'b' => ['type' => 'string']]),
+            $this->schema(2, [
+                'b' => ['type' => 'string', 'x-migrate-from' => 'a'],
+                'c' => ['type' => 'string', 'x-migrate-from' => 'b'],
+            ]),
+        );
+
+        $this->assertSame('declared-mapping', $result->rung);
+        $this->assertSame(['b' => 'VALUE-A', 'c' => 'VALUE-B'], $result->migrated);
+    }
+
+    public function test_a_rename_swap_exchanges_the_values(): void
+    {
+        $result = MigrationLadder::default()->migrate(
+            ['a' => 'VALUE-A', 'b' => 'VALUE-B'],
+            $this->schema(1, ['a' => ['type' => 'string'], 'b' => ['type' => 'string']]),
+            $this->schema(2, [
+                'a' => ['type' => 'string', 'x-migrate-from' => 'b'],
+                'b' => ['type' => 'string', 'x-migrate-from' => 'a'],
+            ]),
+        );
+
+        $this->assertSame('declared-mapping', $result->rung);
+        $this->assertSame(['a' => 'VALUE-B', 'b' => 'VALUE-A'], $result->migrated);
+    }
+
+    public function test_pins_a_null_renamed_into_a_non_nullable_field_is_refused_and_the_record_kept_whole(): void
+    {
+        // The declared rung carries the null across; a non-nullable target refuses it at the gate, so the ladder
+        // quarantines with the original preserved, rather than the structural rung's old silent empty string.
+        $payload = ['summary' => null];
+        $result = MigrationLadder::default()->migrate(
+            $payload,
+            $this->schema(1, ['summary' => ['type' => ['string', 'null']]]),
+            $this->schema(2, ['blurb' => ['type' => 'string', 'x-migrate-from' => 'summary']]),
+        );
+
+        $this->assertFalse($result->wasMigrated());
+        $this->assertNull($result->migrated);
+        $this->assertSame($payload, $result->original);
+    }
+
     public function test_a_record_already_past_the_rename_still_migrates_structurally(): void
     {
         // v2 -> v3: the target still carries the v2 rename, but the old key is long gone. Nothing to carry, so the

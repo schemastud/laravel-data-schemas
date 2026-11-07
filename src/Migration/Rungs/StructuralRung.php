@@ -2,6 +2,7 @@
 
 namespace Schemastud\DataSchemas\Migration\Rungs;
 
+use Schemastud\DataSchemas\Keywords;
 use Schemastud\DataSchemas\Lifecycle\SchemaDiff;
 use Schemastud\DataSchemas\Migration\MigrationRequest;
 use Schemastud\DataSchemas\Migration\MigrationRung;
@@ -15,7 +16,8 @@ use Schemastud\DataSchemas\Migration\MigrationRung;
  *  - DROPPED field -> remove it from the payload.
  *  - WIDENED field -> keep the value as-is (it already satisfies the broader type).
  *
- * It never guesses a rename (that is the declared-mappings rung) and never invents
+ * It never guesses a rename (that is the declared-mappings rung), abstains when the target declares one whose old key
+ * still holds a value (so that rung carries it, rather than this one dropping it), and never invents
  * a value for an added field with no default beyond a typed empty. If the result
  * does not validate (e.g. an added required field with no default cannot be filled
  * sensibly), the acceptance gate makes the rung abstain.
@@ -29,6 +31,16 @@ class StructuralRung extends MigrationRung
 
     protected function propose(MigrationRequest $request): ?array
     {
+        // A declared rename whose old key still holds a value belongs to the declared-mapping rung. Proposing here would
+        // drop the old key and fill the new one with a typed empty, a candidate the gate accepts whenever the new field
+        // allows an empty value, so the value would be lost before that rung ran (launch ticket 30). Abstain instead.
+        foreach ($request->to['properties'] ?? [] as $prop) {
+            $from = $prop[Keywords::MigrateFrom] ?? null;
+            if (is_string($from) && $from !== '' && array_key_exists($from, $request->payload)) {
+                return null;
+            }
+        }
+
         $diff = $request->diff;
         $candidate = $request->payload;
 

@@ -10,7 +10,8 @@ use Schemastud\DataSchemas\Migration\MigrationRung;
  * Rung 2 — applies the author-declared renames/moves a structural diff cannot
  * infer. The target schema carries `x-migrate-from: oldKey` on a property (from
  * #[WasNamed]); this rung copies the OLD key's value into the new key, then drops
- * the now-consumed old key.
+ * the now-consumed old key. Renames are simultaneous: each new key reads its old
+ * key from the stored payload, so chains and swaps keep every value.
  *
  * It first applies the same structural reconciliation (drop/add/widen) as rung 1
  * so a schema version that BOTH renames a field AND adds/drops others migrates in
@@ -32,13 +33,18 @@ class DeclaredMappingRung extends MigrationRung
             return null;
         }
 
-        $candidate = $request->payload;
+        $stored = $request->payload;
+        $candidate = $stored;
 
-        // Apply renames: new key takes the old key's value; drop the old key.
+        // Apply renames SIMULTANEOUSLY: every new key takes its old key's value from the STORED payload, never from a
+        // key another rename has just written. Applied one after another, a chain (b <- a, c <- b) read the overwritten
+        // b and a swap (a <- b, b <- a) lost a value (launch ticket 30). So consume every old key first, then write.
+        foreach ($renames as $oldKey) {
+            unset($candidate[$oldKey]);
+        }
         foreach ($renames as $newKey => $oldKey) {
-            if (array_key_exists($oldKey, $candidate)) {
-                $candidate[$newKey] = $candidate[$oldKey];
-                unset($candidate[$oldKey]);
+            if (array_key_exists($oldKey, $stored)) {
+                $candidate[$newKey] = $stored[$oldKey];
             }
         }
 

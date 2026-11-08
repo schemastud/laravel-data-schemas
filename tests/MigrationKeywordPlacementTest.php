@@ -37,6 +37,25 @@ class MigrationKeywordPlacementTest extends TestCase
         $this->assertSame($schema, $registry->get($schema['$id']));
     }
 
+    public function test_instance_data_with_an_x_migrate_from_key_is_not_treated_as_a_schema_keyword(): void
+    {
+        $schema = $this->schema([
+            'properties' => [
+                'metadata' => [
+                    'type' => 'object',
+                    'default' => ['x-migrate-from' => 'ordinary instance value'],
+                    'examples' => [['nested' => ['x-migrate-from' => 'also ordinary data']]],
+                    'x-vendor-extension' => ['x-migrate-from' => 'vendor payload'],
+                ],
+            ],
+        ]);
+
+        $registry = new FilesystemSchemaRegistry($this->directory);
+        $registry->register($schema);
+
+        $this->assertSame($schema, $registry->get($schema['$id']));
+    }
+
     public function test_registration_refuses_x_migrate_from_on_a_nested_object_property(): void
     {
         $schema = $this->schema([

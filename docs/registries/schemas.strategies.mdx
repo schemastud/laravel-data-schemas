@@ -41,6 +41,10 @@ Three strategies, in this order:
 Other packages append their own. A schema-driven UI package, for example, appends strategies that
 read its widget and read-only attributes and emit `x-widget` keywords.
 
+`x-migrate-from` is supported only on a direct property of the schema document. Registration rejects
+the keyword on nested-object and array-item properties because the migration ladder does not apply
+renames below the top level.
+
 ## The storage is a config list
 
 This registry has no storage of its own. Its entries live in `config('data-schemas.strategies')`, a

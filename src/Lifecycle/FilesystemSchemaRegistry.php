@@ -49,6 +49,8 @@ class FilesystemSchemaRegistry implements EnumeratesVersions, SchemaRegistry
             throw new InvalidArgumentException('Cannot register a schema without an $id.');
         }
 
+        MigrationKeywordPlacement::assertTopLevelOnly($schema);
+
         $incoming = SchemaFingerprint::of($schema);
 
         $existing = $this->get($id);

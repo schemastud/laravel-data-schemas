@@ -45,15 +45,26 @@ class SchemaFileWriter implements Writer
      * schemas and runs `prettier --check` finds them clean straight from the generator. `JSON_PRETTY_PRINT` breaks
      * every array onto one line per element and ends without a newline, so every written schema used to fail the
      * check (calcucrypt MAP-24: 7 files).
+     *
+     * A schema json_encode cannot encode (invalid UTF-8, say) throws, naming its class, in both layouts; it never
+     * writes an empty file or a valid but wrong `null` document.
+     *
+     * @throws \JsonException
      */
     protected function encode(WrittenSchema $schema): string
     {
+        try {
+            $json = json_encode($schema->schema, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new \JsonException("Cannot encode the schema for {$schema->className}: {$e->getMessage()}", $e->getCode(), $e);
+        }
+
         if (! ($this->config['format_output'] ?? true)) {
-            return (string) json_encode($schema->schema, JSON_UNESCAPED_SLASHES);
+            return $json;
         }
 
         // One round trip fixes the JSON shape ({} vs []) exactly as json_encode sees it, objects as stdClass.
-        $value = json_decode((string) json_encode($schema->schema, JSON_UNESCAPED_SLASHES));
+        $value = json_decode($json, flags: JSON_THROW_ON_ERROR);
 
         return $this->print($value, '', 0, '')."\n";
     }
@@ -169,6 +180,6 @@ class SchemaFileWriter implements Writer
 
     protected function scalar(mixed $value): string
     {
-        return (string) json_encode($value, JSON_UNESCAPED_SLASHES);
+        return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     }
 }

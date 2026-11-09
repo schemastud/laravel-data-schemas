@@ -104,6 +104,34 @@ class SchemaFileWriterTest extends TestCase
         );
     }
 
+    /**
+     * orch-peer REVISE on a2403e1: a schema json_encode cannot encode (invalid UTF-8 in a title) was cast to '', decoded
+     * to null and written as a valid but wrong `null` document. Both layouts refuse it, name the class and write nothing.
+     */
+    #[\PHPUnit\Framework\Attributes\TestWith([true])]
+    #[\PHPUnit\Framework\Attributes\TestWith([false])]
+    public function test_an_unencodable_schema_throws_and_writes_nothing(bool $formatted): void
+    {
+        Storage::fake('data-schemas');
+        $writer = new SchemaFileWriter($this->config(['format_output' => $formatted]));
+
+        try {
+            $writer->write(new FileSchemaCollection([
+                new WrittenSchema(
+                    className: 'App\Data\UserData',
+                    schema: ['type' => 'object', 'title' => "bad \xB1 utf-8"],
+                    outputPath: '/schemas/App/Data/UserData.schema.json',
+                ),
+            ]));
+            $this->fail('An unencodable schema was written.');
+        } catch (\JsonException $e) {
+            $this->assertStringContainsString('App\Data\UserData', $e->getMessage());
+            $this->assertStringContainsString('Malformed UTF-8', $e->getMessage());
+        }
+
+        Storage::disk('data-schemas')->assertMissing('App/Data/UserData.schema.json');
+    }
+
     public function test_the_shipped_config_names_the_renamed_implementation(): void
     {
         $this->assertSame(SchemaFileWriter::class, config('data-schemas.writer'));

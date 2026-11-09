@@ -29,14 +29,12 @@ use Spatie\LaravelData\Data;
  * Deliberately not `final`: `BeamData` extends it as reserved vocabulary for the tier below, and a host
  * is free to add its own.
  *
- * ⚠️ This sentence used to name `ParticleData` alongside `BeamData`, and **`ParticleData` does not
- * exist** — verified 2026-08-29 by three differently-shaped instruments: a filesystem read over the
- * family package roots and every host's `app/` finds exactly one occurrence estate-wide, which is this
- * sentence; `git log -S` names only the commit that wrote it; and a booted `class_exists()` plus a
- * composer classmap scan at the flagship resolve nothing, with `BeamData` as a working control. It was
- * `particle-contribution-seam` ticket 12 §A4's planned name, cited as real by tickets 10 and 11 during
- * planning and never built. `not final` is still right — `BeamData` alone earns it — so the class is
- * unchanged and only the claim is.
+ * ⚠️ **There is no `ParticleData` class.** The name was planned but never built (verified 2026-08-29
+ * against the family packages, host apps and a booted classmap; `particle-contribution-seam` ticket 12
+ * §A4, tickets 10 and 11), so earlier mentions of it alongside `BeamData` were wrong. `BeamData` alone
+ * is why this class is not `final`.
+ *
+ * @api
  */
 abstract class StudData extends Data implements ProvidesJsonSchema
 {

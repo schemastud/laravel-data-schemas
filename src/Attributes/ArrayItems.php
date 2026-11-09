@@ -13,6 +13,8 @@ use Attribute;
  * `items: {type: string, enum: [...]}` — a list of enum-valued scalars, without the `$ref`
  * indirection (or hydration semantics) of Spatie's #[DataCollectionOf]. For arrays of Data
  * objects use #[DataCollectionOf] instead.
+ *
+ * @api
  */
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::TARGET_PARAMETER)]
 class ArrayItems

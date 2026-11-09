@@ -10,7 +10,11 @@ use Spatie\LaravelData\Attributes\PropertyForMorph;
 use Spatie\LaravelData\Contracts\PropertyMorphableData;
 use Spatie\LaravelData\Data;
 
-/** A closed, declared morph vocabulary. Registry-backed morphs are not enumerated. */
+/**
+ * A closed, declared morph vocabulary. Registry-backed morphs are not enumerated.
+ *
+ * @api
+ */
 #[Attribute(Attribute::TARGET_CLASS)]
 final class MorphUnion
 {

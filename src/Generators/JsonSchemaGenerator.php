@@ -44,6 +44,9 @@ use Spatie\LaravelData\Support\Annotations\DataIterableAnnotationReader;
 use Spatie\LaravelData\Support\DataConfig;
 use Spatie\LaravelData\Support\DataProperty;
 
+/**
+ * @api
+ */
 class JsonSchemaGenerator implements Generator
 {
     /** @var string collapsed|request|response|llm_strict */
@@ -735,9 +738,10 @@ class JsonSchemaGenerator implements Generator
      * which reports a bare `array` for a list and a map alike. But spatie has already parsed it:
      * `DataIterableAnnotationReader` fills `DataType::$iterableKeyType` / `$iterableItemType`,
      * and it is the SAME annotation the TypeScript transformer reads to emit
-     * `Record<string, string>`. The generator was keeping a second, blind copy of the property
-     * model — the defect ticket 31 named for `isRequired()`, one axis over — and that is why one
-     * declaration produced a correct `.d.ts` and an incorrect schema from the same line of source.
+     * `Record<string, string>`. Reading spatie's parse, rather than keeping a second, blind copy of
+     * the property model — the same defect fixed for `isRequired()`, one axis over (ticket 31) — is
+     * what keeps one declaration from producing a correct `.d.ts` and an incorrect schema from the
+     * same line of source.
      *
      * Returns `false` when the property is not a map (a list, or a non-Data class the generator
      * still supports by raw reflection), `null` when it is a map with unconstrained values

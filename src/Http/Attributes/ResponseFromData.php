@@ -7,6 +7,8 @@ use Attribute;
 /**
  * Declare a Spatie Data class that describes an endpoint's response body for a
  * given status code. Repeatable to document multiple status codes.
+ *
+ * @api
  */
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class ResponseFromData

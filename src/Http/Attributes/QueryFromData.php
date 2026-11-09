@@ -32,6 +32,8 @@ use Attribute;
  * second way to spell one declaration, so this mirrors {@see RequestFromData}: one class, one axis. A
  * route that genuinely needs two shapes composes them into one Data class, where the schema can see
  * the composition.
+ *
+ * @api
  */
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS)]
 class QueryFromData

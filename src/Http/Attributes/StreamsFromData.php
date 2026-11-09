@@ -25,6 +25,8 @@ use InvalidArgumentException;
  * repeat the attribute with the same event name (consumers merge same-named declarations in
  * declaration order). The resulting map is the same shape a stream operation declares in its
  * `output:` slot, so a declaration made either way generates identical client types.
+ *
+ * @api
  */
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class StreamsFromData

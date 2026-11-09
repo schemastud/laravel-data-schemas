@@ -14,6 +14,8 @@ namespace Schemastud\DataSchemas\Contracts;
  *
  * An unknown stem returns an empty array — never an exception — so "does any
  * version of this stem exist?" is a cheap, total query.
+ *
+ * @api
  */
 interface EnumeratesVersions
 {

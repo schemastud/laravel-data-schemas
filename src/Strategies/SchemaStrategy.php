@@ -15,6 +15,8 @@ use ReflectionProperty;
  *
  * Strategies must not require a booted Laravel container: the generator is
  * constructed bare in unit tests. Consult config through the passed context.
+ *
+ * @api
  */
 interface SchemaStrategy
 {

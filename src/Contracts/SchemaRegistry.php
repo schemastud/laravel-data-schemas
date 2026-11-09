@@ -14,6 +14,8 @@ use Schemastud\DataSchemas\Lifecycle\SchemaRegistryConflict;
  *
  * Re-registering the SAME `$id` with the SAME fingerprint is a tolerated no-op
  * (idempotent re-publish).
+ *
+ * @api
  */
 interface SchemaRegistry
 {

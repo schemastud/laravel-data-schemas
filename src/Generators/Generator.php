@@ -4,6 +4,9 @@ namespace Schemastud\DataSchemas\Generators;
 
 use ReflectionClass;
 
+/**
+ * @api
+ */
 interface Generator
 {
     public function canGenerate(ReflectionClass $class): bool;

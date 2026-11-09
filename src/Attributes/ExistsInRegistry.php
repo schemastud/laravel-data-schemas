@@ -13,6 +13,8 @@ use Spatie\LaravelData\Support\Validation\ValidationPath;
  * The enum is a snapshot of the visible vocabulary at generation time. Generate under the intended
  * documentation audience; never reuse an actor-specific schema for another actor. A domain-specific
  * attribute may override constraint() to supply the same subset predicate to both projections.
+ *
+ * @api
  */
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::TARGET_PARAMETER)]
 class ExistsInRegistry extends ObjectValidationAttribute

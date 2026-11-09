@@ -4,6 +4,9 @@ namespace Schemastud\DataSchemas\PathGenerators;
 
 use ReflectionClass;
 
+/**
+ * @api
+ */
 class DefaultPathGenerator implements PathGenerator
 {
     public function __construct(protected array $config) {}

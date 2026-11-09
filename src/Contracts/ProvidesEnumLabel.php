@@ -10,6 +10,8 @@ namespace Schemastud\DataSchemas\Contracts;
  * Opt-in and declaration-side per the vendor seam (ADR-0092): the projection logic
  * lives here in the open foundation; each enum that wants labels implements the
  * interface. An enum that does not implement it emits only `enum` (unchanged).
+ *
+ * @api
  */
 interface ProvidesEnumLabel
 {

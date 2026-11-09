@@ -7,6 +7,8 @@ namespace Schemastud\DataSchemas\Strategies;
  * keywords to a property schema: the generator's config (so a strategy can read
  * its own config slot, e.g. `validation_mapping`) and the current schema mode
  * (collapsed|request|response|llm_strict).
+ *
+ * @api
  */
 class SchemaStrategyContext
 {

@@ -6,6 +6,8 @@ use Attribute;
 
 /**
  * Declare the Spatie Data class that describes an endpoint's request body.
+ *
+ * @api
  */
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS)]
 class RequestFromData

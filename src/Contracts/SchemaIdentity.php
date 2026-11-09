@@ -20,6 +20,8 @@ use Spatie\LaravelData\Data;
  * A class that does NOT implement this interface is completely unchanged:
  * short-name `$id`, `#/$defs/Short` inlining for nested Data classes. This is
  * the backward-compatibility seam — versioning is strictly opt-in.
+ *
+ * @api
  */
 interface SchemaIdentity
 {

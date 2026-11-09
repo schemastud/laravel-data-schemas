@@ -9,6 +9,8 @@ use Attribute;
  * peer renderers use `title` as a field's visible label, falling back to the raw
  * property name when absent — so a `maxDistance` property reads "Similarity
  * threshold" instead of the identifier. A peer of {@see Description}.
+ *
+ * @api
  */
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::TARGET_CLASS)]
 class Title

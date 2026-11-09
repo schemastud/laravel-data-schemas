@@ -5,7 +5,8 @@ namespace Schemastud\DataSchemas\Ids;
 use Schemastud\JsonNs\NamespaceUri;
 
 /**
- * How a package's schema REFS parse — the seam beam-facade ticket 139 named and ticket 140 ships.
+ * How a package's schema REFS parse — the seam where a package declares its own ref grammar
+ * (beam-facade ticket 139, ticket 140).
  *
  * ## The defect this exists to remove
  *
@@ -29,10 +30,12 @@ use Schemastud\JsonNs\NamespaceUri;
  *
  * ## The authority is an ARGUMENT
  *
- * A parser is handed the declared `base_uri` rather than reading config, which keeps beam-facade
- * ticket 113's ruling intact one tier up: the value objects stay container-free, and the ONE
+ * A parser is handed the declared `base_uri` rather than reading config, which keeps the same rule
+ * one tier up (beam-facade ticket 113): the value objects stay container-free, and the ONE
  * config-aware seam is {@see SchemaIdResolver}, in the package that owns the key. A parser that
  * reaches for `config()` has re-created the defect above.
+ *
+ * @api
  */
 interface SchemaIdParser
 {
@@ -52,8 +55,8 @@ interface SchemaIdParser
      *                       own spelling.
      * @param  string|bool|null  $baseUri  `data-schemas.base_uri` verbatim, tri-state and all. A
      *                                     parser MUST answer for all three states; see
-     *                                     {@see RelativeSchemaIdParser} for the estate's rulings on
-     *                                     each.
+     *                                     {@see RelativeSchemaIdParser} for how each state is
+     *                                     handled.
      *
      * @throws UnresolvableRelativeSchemaId when the ref needs an authority this host has not declared.
      */

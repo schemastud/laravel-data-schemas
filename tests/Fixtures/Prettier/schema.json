@@ -1,0 +1,80 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://schemas.example.test/App/Data/UserData",
+    "type": "object",
+    "required": ["id", "name", "roles"],
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": ["string", "null"]
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "owner",
+                    "admin",
+                    "member",
+                    "viewer",
+                    "billing-contact",
+                    "guest-collaborator"
+                ]
+            }
+        },
+        "scores": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "examples": [[1, 2, 3]]
+        },
+        "meta": {
+            "type": "object",
+            "properties": {},
+            "default": []
+        },
+        "choice": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "flags": {
+            "type": "array",
+            "default": [true, false, null, 1.5]
+        },
+        "numbers": {
+            "enum": [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+                19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
+            ]
+        },
+        "pairs": {
+            "examples": [
+                [1, 2],
+                [3, 4]
+            ]
+        },
+        "exact": {
+            "examples": [
+                "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ]
+        },
+        "fits": {
+            "examples": ["yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"]
+        },
+        "mixed": {
+            "examples": [1, "a", [], [[]]]
+        },
+        "unicode": {
+            "title": "Caf\u00e9/Bar"
+        }
+    }
+}

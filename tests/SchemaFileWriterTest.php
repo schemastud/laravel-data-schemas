@@ -79,6 +79,31 @@ class SchemaFileWriterTest extends TestCase
         $this->assertStringNotContainsString("\n", Storage::disk('data-schemas')->get('App/Data/UserData.schema.json'));
     }
 
+    /**
+     * calcucrypt MAP-24: a host that commits the generated schemas runs `prettier --check` on them, and every one failed:
+     * `JSON_PRETTY_PRINT` breaks short arrays one element a line and leaves no trailing newline. The formatted output is
+     * prettier's own layout now; `Fixtures/Prettier/schema.json` is prettier 3.6.2's output (tabWidth 4, printWidth 80)
+     * for the value in `schema.php`, so a clean file stays clean.
+     */
+    public function test_formatted_output_is_what_prettier_writes_for_it(): void
+    {
+        Storage::fake('data-schemas');
+        $fixtures = __DIR__.'/Fixtures/Prettier';
+
+        (new SchemaFileWriter($this->config(['format_output' => true])))->write(new FileSchemaCollection([
+            new WrittenSchema(
+                className: 'App\Data\UserData',
+                schema: require $fixtures.'/schema.php',
+                outputPath: '/schemas/App/Data/UserData.schema.json',
+            ),
+        ]));
+
+        $this->assertSame(
+            file_get_contents($fixtures.'/schema.json'),
+            Storage::disk('data-schemas')->get('App/Data/UserData.schema.json'),
+        );
+    }
+
     public function test_the_shipped_config_names_the_renamed_implementation(): void
     {
         $this->assertSame(SchemaFileWriter::class, config('data-schemas.writer'));

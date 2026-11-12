@@ -14,6 +14,8 @@ use Attribute;
  * indirection (or hydration semantics) of Spatie's #[DataCollectionOf]. For arrays of Data
  * objects use #[DataCollectionOf] instead.
  *
+ * This list-item attribute remains single-string; the primitive type-list union form belongs to #[MapValues].
+ *
  * @api
  */
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::TARGET_PARAMETER)]

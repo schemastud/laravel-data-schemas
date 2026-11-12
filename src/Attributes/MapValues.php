@@ -3,6 +3,7 @@
 namespace Schemastud\DataSchemas\Attributes;
 
 use Attribute;
+use InvalidArgumentException;
 
 /**
  * Declares that an `array` property is a string-keyed MAP — `array<string, T>` — and names
@@ -20,9 +21,15 @@ use Attribute;
  * to say which — the generator inferring a shape from a signal that does not carry it, which
  * is the defect this closes rather than a style to repeat.
  *
- * `$type` accepts the same vocabulary as #[ArrayItems] — a scalar JSON type token
+ * The single-string `$type` accepts the same vocabulary as #[ArrayItems] — a scalar JSON type token
  * (`'string'`, `'integer'`, …) or a backed-enum class, whose values are inlined — and
  * additionally a Data/object class, emitted as a `$ref` into `$defs`.
+ *
+ * A nonempty list of distinct primitive JSON type tokens declares a value union, for example
+ * `#[MapValues(['number', 'string'])]`. It emits `additionalProperties: {type: ['number', 'string']}`.
+ * Type-list order is canonicalized before emission so reordering tokens preserves the fingerprint.
+ * Only this map attribute supports the list form; #[ArrayItems] remains single-string.
+ * String/enum/class/null forms retain their existing meaning.
  *
  * It is OPTIONAL, and that is load-bearing rather than a convenience. Measured across the
  * estate, **49 of 55** map-shaped properties are `array<string, mixed>`: a bag whose value
@@ -37,5 +44,16 @@ use Attribute;
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::TARGET_PARAMETER)]
 class MapValues
 {
-    public function __construct(public ?string $type = null) {}
+    /** @param string|list<string>|null $type */
+    public function __construct(public string|array|null $type = null)
+    {
+        if (is_array($type) && (
+            $type === [] || ! array_is_list($type)
+            || array_filter($type, fn ($token) => ! is_string($token)
+                || ! in_array($token, ['string', 'integer', 'number', 'boolean', 'null'], true)) !== []
+            || count(array_unique($type)) !== count($type)
+        )) {
+            throw new InvalidArgumentException('MapValues requires a nonempty list of distinct primitive JSON type tokens.');
+        }
+    }
 }

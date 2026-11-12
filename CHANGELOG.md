@@ -4,6 +4,9 @@ All notable changes to `schemastud/laravel-data-schemas` are documented here.
 
 ## Unreleased
 
+- `MapValues` accepts a nonempty list of distinct primitive JSON types, such as `['number', 'string']`, to declare map-value unions. Type tokens are sorted in emitted schemas for stable fingerprints.
+- `ArrayItems` retains its single-string form. Union PHPDoc without an explicit `MapValues` annotation still follows Spatie's last-member inference; use the explicit declaration for a union-valued map.
+
 ### Changed
 - **The schema collection family splits on provenance, and the writer moved onto a disk.**
   `GeneratedSchema` no longer carries an `outputPath` — most projections of this generator have no

@@ -813,7 +813,7 @@ class JsonSchemaGenerator implements Generator
      * the two never touch the same slot. `makeNullable()` only rewrites `type`, so a nullable
      * map keeps its value declaration in `llm_strict` too.
      */
-    protected function applyMapValues(array $schema, ?string $type): array
+    protected function applyMapValues(array $schema, string|array|null $type): array
     {
         $current = $schema['type'] ?? null;
 
@@ -837,14 +837,20 @@ class JsonSchemaGenerator implements Generator
     }
 
     /**
-     * The value schema for a map. Same vocabulary as `arrayItemsSchema()` — scalar token or
+     * The value schema for a map. Single-string vocabulary matches `arrayItemsSchema()` — scalar token or
      * backed enum — plus a Data/object class, which becomes a `$ref` into `$defs`. #[ArrayItems]
      * deliberately does NOT take the class arm (its docblock sends arrays of Data objects to
      * spatie's #[DataCollectionOf], which carries hydration semantics); a map has no such peer,
      * so the ref has to be reachable from here or `array<string, SomeData>` stays undeclarable.
      */
-    protected function mapValueSchema(string $type): array
+    protected function mapValueSchema(string|array $type): array
     {
+        if (is_array($type)) {
+            sort($type, SORT_STRING);
+
+            return ['type' => $type];
+        }
+
         if (class_exists($type) && ! enum_exists($type)) {
             return ['$ref' => $this->ensureDef(new ReflectionClass($type))];
         }

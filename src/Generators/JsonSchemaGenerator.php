@@ -24,6 +24,7 @@ use Schemastud\DataSchemas\Attributes\MorphUnion;
 use Schemastud\DataSchemas\Attributes\Title;
 use Schemastud\DataSchemas\Contracts\ProvidesEnumLabel;
 use Schemastud\DataSchemas\Contracts\SchemaIdentity;
+use Schemastud\DataSchemas\Contracts\SchemaText;
 use Schemastud\DataSchemas\Ids\SchemaIdResolver;
 use Schemastud\DataSchemas\Keywords;
 use Schemastud\DataSchemas\Strategies\KeywordAttributesStrategy;
@@ -32,6 +33,7 @@ use Schemastud\DataSchemas\Strategies\SchemaStrategy;
 use Schemastud\DataSchemas\Strategies\SchemaStrategyContext;
 use Schemastud\DataSchemas\Strategies\ValidationAttributeStrategy;
 use Schemastud\DataSchemas\Support\SchemaAuthority;
+use Schemastud\DataSchemas\Text\IdentitySchemaText;
 use Spatie\LaravelData\Attributes\Computed;
 use Spatie\LaravelData\Contracts\BaseData;
 use Spatie\LaravelData\Data;
@@ -72,6 +74,9 @@ class JsonSchemaGenerator implements Generator
      * @var array<int, SchemaStrategy>|null
      */
     protected ?array $resolvedStrategies = null;
+
+    /** The display-text hook, resolved on first use ({@see text()}). */
+    protected ?SchemaText $text = null;
 
     /**
      * Spatie's iterable-annotation reader, and its answers, memoized per generator instance.
@@ -194,14 +199,14 @@ class JsonSchemaGenerator implements Generator
             'type' => 'object',
             // A class-level #[Title] wins over the class short name — the root peer of the
             // class-level #[Description] below (the attribute already declares TARGET_CLASS).
-            'title' => $this->getClassTitle($class) ?? $this->identifierTitle($class->getShortName()),
+            'title' => $this->text()->classTitle($class, $this->getClassTitle($class)) ?? $this->identifierTitle($class->getShortName()),
             'properties' => [],
         ];
         if ($schema['title'] === null) {
             unset($schema['title']);
         }
 
-        if ($description = $this->getClassDescription($class)) {
+        if ($description = $this->text()->classDescription($class, $this->getClassDescription($class))) {
             $schema['description'] = $description;
         }
 
@@ -703,7 +708,7 @@ class JsonSchemaGenerator implements Generator
             // property's own #[Title] does override this via the sibling-title RJSF merge, but a
             // property with no override was stuck with the class name regardless). Falls back to the
             // short name, unchanged, for every enum that hasn't opted in.
-            'title' => $this->getClassTitle($reflection) ?? $this->identifierTitle($short),
+            'title' => $this->text()->enumTitle($enumClass, $this->getClassTitle($reflection)) ?? $this->identifierTitle($short),
             'enum' => array_map(fn (BackedEnum $case) => $case->value, $enumClass::cases()),
         ];
         if ($def['title'] === null) {
@@ -715,7 +720,7 @@ class JsonSchemaGenerator implements Generator
         // Absent the contract, only `enum` is emitted (unchanged).
         if (is_subclass_of($enumClass, ProvidesEnumLabel::class)) {
             $def['enumNames'] = array_map(
-                fn (ProvidesEnumLabel $case) => $case->label(),
+                fn (ProvidesEnumLabel $case) => $this->text()->enumCaseLabel($case, $case->label()),
                 $enumClass::cases(),
             );
         }
@@ -1373,6 +1378,16 @@ class JsonSchemaGenerator implements Generator
         }
 
         return is_array($configured) ? array_values($configured) : [];
+    }
+
+    /**
+     * The display-text hook for the text written outside the property-strategy loop (class and enum titles, a class's
+     * description, enum case labels). The identity default leaves output unchanged; a package above this one binds
+     * {@see SchemaText} to translate it. Resolved once per generator.
+     */
+    protected function text(): SchemaText
+    {
+        return $this->text ??= IdentitySchemaText::current();
     }
 
     protected function getClassTitle(ReflectionClass $class): ?string

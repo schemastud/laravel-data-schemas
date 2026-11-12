@@ -11,6 +11,7 @@ use Schemastud\DataSchemas\Commands\SchemaCheckCommand;
 use Schemastud\DataSchemas\Commands\SchemaFreezeCommand;
 use Schemastud\DataSchemas\Commands\SchemaFreezeVersionCommand;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
+use Schemastud\DataSchemas\Contracts\SchemaText;
 use Schemastud\DataSchemas\Contracts\ServedSchemaRegistry;
 use Schemastud\DataSchemas\Fixtures\FixtureIndex;
 use Schemastud\DataSchemas\Generators\ChainedGenerator;
@@ -32,6 +33,7 @@ use Schemastud\DataSchemas\Sources\PathScanSource;
 use Schemastud\DataSchemas\Sources\SchemaProjectionRegistry;
 use Schemastud\DataSchemas\Strategies\SchemaStrategiesRegistry;
 use Schemastud\DataSchemas\Support\SchemaDisk;
+use Schemastud\DataSchemas\Text\IdentitySchemaText;
 
 class LaravelDataSchemasServiceProvider extends ServiceProvider
 {
@@ -94,6 +96,10 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
         // ticket 08 D6/D7: a registry describes itself, and nobody describes on another's behalf).
         // The array stays the storage; every existing consumer still reads the plain list.
         $this->app->singleton(SchemaStrategiesRegistry::class);
+
+        // The display-text hook (localization 09): identity by default, so output is unchanged. `singletonIf`, so a
+        // package above this one that binds its own (splicewire/laravel-beam) wins whichever provider registers first.
+        $this->app->singletonIf(SchemaText::class, IdentitySchemaText::class);
 
         // The ref-grammar seam (beam-facade ticket 140). Same adapter shape as the strategies
         // registry above and for the same reason — the storage is `config('data-schemas.id_parsers')`,

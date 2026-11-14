@@ -106,6 +106,34 @@ and its state wins under the same key, the same way a container binding override
 The displaced entry stays readable through `supersededAt($key)`, so a collision between two packages
 is visible rather than silent.
 
+## Recorded payload states
+
+A payload state registers an attribute array under the same key as a handwritten state:
+
+```php
+$fixtures = app(FixtureIndex::class);
+$fixtures->definePayloadState('plans', 'recorded-request', ['name' => 'Recorded'],
+    by: 'request-recording', file: 'recorded-request.json');
+PlanData::factory()->recordedRequest()->make();
+```
+
+`loadPayloadStates('plans', $directory, by: 'request-recording')` loads each direct `*.json`
+child as one state, in filename order. Files must contain JSON objects; the filename stem is the
+state key (`recorded-request.json` becomes `->recordedRequest()`). Invalid input names the file
+and refuses the directory before registering any state. No HTTP recorder is required.
+
+Payload states compose with handwritten states in call order, followed by caller overrides and
+hooks. They enable validation by default; an explicit `->withoutValidation()` still opts out.
+Build failures retain the underlying exception and name the payload source. A host can supersede
+a package payload with either kind of state, and the displaced payload and registrant remain
+readable through `supersededAt()`.
+
+Use `$fixtures->verifyPayloads('plans', PlanData::class)` to check each current payload against
+the current Data class **on its own**, with validation enabled and magical creation disabled.
+Verification never applies fixture defaults, other states, caller overrides or hooks, so those
+cannot hide a recorded payload missing a newly required property. Superseded payloads are history
+and are excluded from this check.
+
 ## What it does not do
 
 There is no `create()`. A fixture builds a Data object through spatie/laravel-data's own creation

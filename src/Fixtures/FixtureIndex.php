@@ -3,6 +3,8 @@
 namespace Schemastud\DataSchemas\Fixtures;
 
 use Closure;
+use InvalidArgumentException;
+use JsonException;
 use Rushing\Popcorn\Registries\BasicRegistry;
 use Rushing\Popcorn\Registries\IsRegistry;
 use Rushing\Popcorn\Registries\Nested;
@@ -101,6 +103,64 @@ class FixtureIndex implements Nested, Registry
     }
 
     /**
+     * Register attributes under the SAME state keyspace and supersession policy as closures.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function definePayloadState(string $shape, string $state, array $attributes, ?string $by = null, ?string $file = null): static
+    {
+        $source = $file ?? "schemas.fixtures.{$shape}.{$state}";
+        $this->store->register("schemas.fixtures.{$shape}.{$state}", new PayloadState($attributes, $source), by: $by ?? $source);
+
+        return $this;
+    }
+
+    /** Load direct *.json children in filename order; each filename stem is an exact state name. */
+    public function loadPayloadStates(string $shape, string $directory, ?string $by = null): static
+    {
+        if (! is_dir($directory) || ! is_readable($directory)) {
+            throw new InvalidArgumentException("Cannot read fixture payload directory [{$directory}].");
+        }
+        $files = glob(rtrim($directory, '/').'/*.json');
+        if ($files === false) {
+            throw new InvalidArgumentException("Cannot enumerate fixture payload directory [{$directory}].");
+        }
+        sort($files, SORT_STRING);
+        $payloads = [];
+        foreach ($files as $file) {
+            if (! is_file($file)) {
+                continue;
+            }
+            $text = @file_get_contents($file);
+            try {
+                if ($text === false || ! is_object(json_decode($text, flags: JSON_THROW_ON_ERROR))) {
+                    throw new InvalidArgumentException("Fixture payload [{$file}] must be a JSON object.");
+                }
+                $payloads[$file] = json_decode($text, true, flags: JSON_THROW_ON_ERROR);
+            } catch (JsonException $e) {
+                throw new InvalidArgumentException("Fixture payload [{$file}] is not valid JSON.", previous: $e);
+            }
+        }
+        // Parse all files first so malformed input never partially registers a directory.
+        foreach ($payloads as $file => $attributes) {
+            $this->definePayloadState($shape, pathinfo($file, PATHINFO_FILENAME), $attributes, $by, $file);
+        }
+
+        return $this;
+    }
+
+    /** Verify every CURRENT payload state of a shape, without defaults or hooks. */
+    public function verifyPayloads(string $shape, string $dataClass): void
+    {
+        foreach ($this->statesOf($shape) as $state) {
+            $entry = $this->stateFor($shape, $state);
+            if ($entry instanceof PayloadState) {
+                $entry->verify($dataClass);
+            }
+        }
+    }
+
+    /**
      * The REGISTERED defaults, or null when none are. Null is not "start empty": {@see FixtureFactory}
      * then falls back to the class's own `fixtureDefaults()`, which is what makes a shape work with
      * zero registration.
@@ -133,11 +193,11 @@ class FixtureIndex implements Nested, Registry
         return $this->store->has($key) ? $this->store->resolve($key) : null;
     }
 
-    public function stateFor(string $shape, string $state): ?Closure
+    public function stateFor(string $shape, string $state): Closure|PayloadState|null
     {
         $entry = $this->store->tryResolve("schemas.fixtures.{$shape}.{$state}");
 
-        return $entry instanceof Closure ? $entry : null;
+        return $entry instanceof Closure || $entry instanceof PayloadState ? $entry : null;
     }
 
     /**

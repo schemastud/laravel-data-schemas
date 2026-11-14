@@ -12,3 +12,5 @@ Thumbs.db
 *~
 CLAUDE.md
 composer.local.json
+
+/.env

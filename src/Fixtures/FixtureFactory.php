@@ -4,7 +4,10 @@ namespace Schemastud\DataSchemas\Fixtures;
 
 use Closure;
 use InvalidArgumentException;
+use RuntimeException;
 use Spatie\LaravelData\Support\Creation\CreationContextFactory;
+use Spatie\LaravelData\Support\Creation\ValidationStrategy;
+use Throwable;
 
 /**
  * Laravel-model-factory ergonomics over a declared Data class, built by EXTENDING spatie's own
@@ -43,8 +46,10 @@ class FixtureFactory extends CreationContextFactory
 
     private string $shape;
 
-    /** @var list<Closure(array<string, mixed>): array<string, mixed>> */
+    /** @var list<Closure|PayloadState> */
     private array $states = [];
+
+    private bool $explicitValidation = false;
 
     /** @var array<string, mixed> */
     private array $overrides = [];
@@ -77,6 +82,7 @@ class FixtureFactory extends CreationContextFactory
 
     public function withoutValidation(): static
     {
+        $this->explicitValidation = true;
         parent::withoutValidation();
 
         return $this;
@@ -84,7 +90,24 @@ class FixtureFactory extends CreationContextFactory
 
     public function alwaysValidate(): static
     {
+        $this->explicitValidation = true;
         parent::alwaysValidate();
+
+        return $this;
+    }
+
+    public function onlyValidateRequests(): static
+    {
+        $this->explicitValidation = true;
+        parent::onlyValidateRequests();
+
+        return $this;
+    }
+
+    public function validationStrategy(ValidationStrategy $validationStrategy): static
+    {
+        $this->explicitValidation = true;
+        parent::validationStrategy($validationStrategy);
 
         return $this;
     }
@@ -118,6 +141,9 @@ class FixtureFactory extends CreationContextFactory
             ));
         }
 
+        if ($resolved instanceof PayloadState && ! $this->explicitValidation) {
+            parent::alwaysValidate();
+        }
         $this->states[] = $resolved;
         $this->overrides = array_merge($this->overrides, $attributes);
 
@@ -203,13 +229,28 @@ class FixtureFactory extends CreationContextFactory
     public function make(array $attributes = []): object|array
     {
         if ($this->count === 1) {
-            return parent::from($this->raw($attributes));
+            return $this->build($attributes, 0);
         }
 
         return array_map(
-            fn (int $i): object => parent::from($this->raw($attributes, $i)),
+            fn (int $i): object => $this->build($attributes, $i),
             range(0, $this->count - 1),
         );
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function build(array $attributes, int $index): object
+    {
+        try {
+            return parent::from($this->raw($attributes, $index));
+        } catch (Throwable $e) {
+            $sources = array_map(fn (PayloadState $s): string => $s->source,
+                array_filter($this->states, fn ($s): bool => $s instanceof PayloadState));
+            if ($sources === []) {
+                throw $e;
+            }
+            throw new RuntimeException('Fixture payload ['.implode(', ', $sources)."] no longer builds [{$this->dataClass}].", previous: $e);
+        }
     }
 
     /** camelCase and snake_case both land on the kebab spelling a registration uses. */

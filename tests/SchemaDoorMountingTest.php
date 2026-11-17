@@ -5,6 +5,7 @@ namespace Schemastud\DataSchemas\Tests;
 use Illuminate\Http\Request;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Schemastud\DataSchemas\Http\SchemaDoorClaimsTheSite;
 use Schemastud\DataSchemas\Http\SchemaDoorMount;
 use Schemastud\DataSchemas\LaravelDataSchemasServiceProvider;
 
@@ -108,6 +109,89 @@ class SchemaDoorMountingTest extends TestCase
 
         $elsewhere = $routes->match(Request::create('https://splicewire.com/about'));
         $this->assertSame('sibling.root', $elsewhere->getName());
+    }
+
+    public static function siteClaims(): array
+    {
+        return [
+            'a bare origin on the app host itself' => ['http://localhost', 'http://localhost', null],
+            'the port does not separate them (nor does the domain constraint)' => ['http://localhost:9000', 'http://localhost:8000', null],
+            'hosts compare case-insensitively' => ['https://App.Example.test', 'https://app.example.test', null],
+            'a trailing dot names the same host' => ['https://app.example.test.', 'https://app.example.test', null],
+            'the loopback sink a proof host is pointed at' => ['http://127.0.0.1:9', 'http://127.0.0.1:9', null],
+            'a tier declared UNCONSTRAINED claims every host' => ['https://schemas.example.test', 'https://splicewire.com', ['public' => ['domain' => null]]],
+            'a tier constrained to the app host' => ['https://schemas.example.test', 'https://splicewire.com', ['public' => ['domain' => 'splicewire.com']]],
+            'unconstrained is refused even with no app host to judge' => ['https://schemas.example.test', '', ['public' => ['domain' => null]]],
+        ];
+    }
+
+    /**
+     * Launch ticket 70 — a ROOT door (from a path-less authority) on a tier that is unconstrained, or constrained to
+     * the app's OWN host, is not the dedicated-host shape above: it is a catch-all over the whole site. Measured on
+     * the starters: laravel-beam's ApiRoot then refused the boot ("API root [beam/accounts] is shadowed by earlier
+     * catch-all [data-schemas.document]"), naming the door but not the setting. The refusal must come from here,
+     * name SCHEMA_BASE_URI and the '/schemas' fix, judge each resolved tier, and leave no door behind.
+     */
+    #[DataProvider('siteClaims')]
+    public function test_a_root_door_that_would_claim_the_whole_site_is_refused(string $baseUri, string $appUrl, ?array $tiers): void
+    {
+        $this->app['config']->set('app.url', $appUrl);
+        $this->app['config']->set('data-schemas.base_uri', $baseUri);
+        $this->app['config']->set('data-schemas.served_tiers', $tiers);
+
+        try {
+            (new LaravelDataSchemasServiceProvider($this->app))->mountSchemaDoor();
+            $this->fail('a root door that claims the whole site was mounted instead of refused');
+        } catch (SchemaDoorClaimsTheSite $refused) {
+            $this->assertStringContainsString('SCHEMA_BASE_URI', $refused->getMessage());
+            $this->assertStringContainsString('/schemas', $refused->getMessage());
+        }
+
+        $this->assertNull(
+            collect($this->app['router']->getRoutes())->first(fn ($r) => str_starts_with((string) $r->getName(), 'data-schemas.document')),
+            'a refused authority must not leave a door behind',
+        );
+    }
+
+    public function test_the_refusal_names_the_origin_only_never_credentials_or_query(): void
+    {
+        $this->app['config']->set('app.url', 'https://app.example.test');
+        $this->app['config']->set('data-schemas.base_uri', 'https://user:s3cret@app.example.test?token=abc');
+
+        try {
+            (new LaravelDataSchemasServiceProvider($this->app))->mountSchemaDoor();
+            $this->fail('expected the site-claiming door to be refused');
+        } catch (SchemaDoorClaimsTheSite $refused) {
+            $this->assertStringContainsString('https://app.example.test/schemas', $refused->getMessage());
+            $this->assertStringNotContainsString('s3cret', $refused->getMessage());
+            $this->assertStringNotContainsString('token=abc', $refused->getMessage());
+        }
+    }
+
+    public static function stillMounts(): array
+    {
+        return [
+            'a dedicated schemas host beside the app' => ['https://schemas.splicewire.com', 'https://splicewire.com', null, '{path}', 'schemas.splicewire.com'],
+            'a path on the app host is the documented form' => ['http://localhost/schemas', 'http://localhost', null, 'schemas/{path}', null],
+            'a path-shaped door never claims the site, even unconstrained' => ['http://localhost/schemas', 'http://localhost', ['public' => ['domain' => null]], 'schemas/{path}', null],
+            'an app-host authority whose tier is constrained ELSEWHERE' => ['http://localhost', 'http://localhost', ['public' => ['domain' => 'schemas.localhost.test']], '{path}', 'schemas.localhost.test'],
+            'an app URL with no host cannot be judged against' => ['http://localhost', 'localhost', null, '{path}', 'localhost'],
+        ];
+    }
+
+    #[DataProvider('stillMounts')]
+    public function test_every_other_declared_authority_still_mounts(string $baseUri, string $appUrl, ?array $tiers, string $uri, ?string $domain): void
+    {
+        $this->app['config']->set('app.url', $appUrl);
+        $this->app['config']->set('data-schemas.base_uri', $baseUri);
+        $this->app['config']->set('data-schemas.served_tiers', $tiers);
+        (new LaravelDataSchemasServiceProvider($this->app))->mountSchemaDoor();
+
+        $door = collect($this->app['router']->getRoutes())->first(fn ($r) => str_starts_with((string) $r->getName(), 'data-schemas.document'));
+
+        $this->assertNotNull($door, "{$baseUri} beside {$appUrl} must still mount its door");
+        $this->assertSame($uri, $door->uri());
+        $this->assertSame($domain, $door->getDomain());
     }
 
     public function test_a_relative_authority_mounts_no_door_at_all(): void

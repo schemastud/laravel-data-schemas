@@ -17,6 +17,7 @@ use Schemastud\DataSchemas\Fixtures\FixtureIndex;
 use Schemastud\DataSchemas\Generators\ChainedGenerator;
 use Schemastud\DataSchemas\Generators\Generator;
 use Schemastud\DataSchemas\Http\SchemaDocumentController;
+use Schemastud\DataSchemas\Http\SchemaDoorClaimsTheSite;
 use Schemastud\DataSchemas\Http\SchemaDoorMount;
 use Schemastud\DataSchemas\Http\ServedTier;
 use Schemastud\DataSchemas\Ids\SchemaIdParsersRegistry;
@@ -32,6 +33,7 @@ use Schemastud\DataSchemas\Overlay\StaticOverlayResolver;
 use Schemastud\DataSchemas\Sources\PathScanSource;
 use Schemastud\DataSchemas\Sources\SchemaProjectionRegistry;
 use Schemastud\DataSchemas\Strategies\SchemaStrategiesRegistry;
+use Schemastud\DataSchemas\Support\SchemaAuthority;
 use Schemastud\DataSchemas\Support\SchemaDisk;
 use Schemastud\DataSchemas\Text\IdentitySchemaText;
 
@@ -268,6 +270,16 @@ class LaravelDataSchemasServiceProvider extends ServiceProvider
             $this->app['config']->get('data-schemas.served_tiers'),
             SchemaDoorMount::domainFor($baseUri),
         );
+
+        // Launch ticket 70: a root door on a tier that is unconstrained, or constrained to the app's OWN host,
+        // is a catch-all over the whole site. Judged per RESOLVED tier (a tier's declared domain is what its
+        // route is constrained to), and refused before ANY tier's route is registered, so nothing half-mounts.
+        $appUrl = $this->app['config']->get('app.url');
+        foreach ($tiers as $tier) {
+            if (SchemaDoorMount::claimsTheSite($pattern, $tier->domain, is_string($appUrl) ? $appUrl : null)) {
+                throw new SchemaDoorClaimsTheSite((string) SchemaAuthority::originOf($baseUri), $tier->key, $tier->domain);
+            }
+        }
 
         foreach ($tiers as $tier) {
             // The domain is applied through the registrar BEFORE the route is added, and so is the

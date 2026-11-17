@@ -78,4 +78,45 @@ class SchemaDoorMount
 
         return SchemaAuthority::hostOf($baseUri);
     }
+
+    /**
+     * Whether a door mounted with `$pattern` on a tier constrained to `$tierDomain` would be a catch-all over
+     * the app's whole site (launch ticket 70; see {@see SchemaDoorClaimsTheSite}).
+     *
+     * Only the ROOT pattern (`{path}`, from a path-less authority) can claim a site; a path-shaped door
+     * never does. It claims the site when its tier is UNCONSTRAINED (`domain => null`: every host) or is
+     * constrained to the app's OWN host, which constrains nothing. Judged per resolved tier, because a
+     * tier's declared domain, not the authority's host, is what the route is constrained to.
+     *
+     * Hosts compare case-insensitively, without a trailing dot and WITHOUT the port, exactly as the
+     * domain constraint itself matches: `localhost:9000` still claims an app at `localhost:8000`. An app
+     * URL that names no host cannot be judged against, so a constrained tier is not refused on that
+     * account (an unconstrained one still is: it claims every host whatever the app's is).
+     */
+    public static function claimsTheSite(?string $pattern, ?string $tierDomain, ?string $appUrl): bool
+    {
+        if ($pattern !== '{path}') {
+            return false;
+        }
+
+        if ($tierDomain === null) {
+            return true;
+        }
+
+        $appHost = is_string($appUrl) ? parse_url(trim($appUrl), PHP_URL_HOST) : null;
+
+        return is_string($appHost) && $appHost !== ''
+            && strcasecmp(self::bareHost($tierDomain), self::bareHost($appHost)) === 0;
+    }
+
+    /** A host as the domain constraint matches it: no port, no trailing dot, case kept for strcasecmp. */
+    private static function bareHost(string $host): string
+    {
+        $host = trim($host);
+        if (! str_starts_with($host, '[')) {
+            $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+        }
+
+        return rtrim($host, '.');
+    }
 }

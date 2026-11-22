@@ -3,6 +3,7 @@
 namespace Schemastud\DataSchemas\Lifecycle;
 
 use InvalidArgumentException;
+use RuntimeException;
 use Schemastud\DataSchemas\Contracts\EnumeratesVersions;
 use Schemastud\DataSchemas\Contracts\SchemaRegistry;
 
@@ -36,8 +37,17 @@ class FilesystemSchemaRegistry implements EnumeratesVersions, SchemaRegistry
     public function __construct(
         protected string $directory,
     ) {
+        // Atomic "make it if missing": the registry is built on every request and worker that resolves it, so two
+        // processes can both see no directory and race to create it. The loser's mkdir fails with "File exists",
+        // which Laravel's error handler turns into an exception (agreements 07a). Only a directory that is still
+        // missing after the attempt is an error.
+        if (is_dir($this->directory) || @mkdir($this->directory, 0775, true)) {
+            return;
+        }
+
+        clearstatcache(true, $this->directory);
         if (! is_dir($this->directory)) {
-            mkdir($this->directory, 0775, true);
+            throw new RuntimeException("Cannot create the schema registry directory [{$this->directory}].");
         }
     }
 

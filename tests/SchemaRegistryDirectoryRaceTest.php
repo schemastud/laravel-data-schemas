@@ -28,12 +28,14 @@ class SchemaRegistryDirectoryRaceTest extends TestCase
     }
 
     /**
-     * Run $build under an error handler that throws on any unsuppressed warning, as Laravel's HandleExceptions does.
-     * It is installed HERE, around the construction, and not in setUp(): PHPUnit installs its own handler after setUp()
-     * and only records warnings, which would let the losing worker's warning pass silently.
+     * Run $build as Laravel's HandleExceptions does: error_reporting(-1), and an error handler that throws on any
+     * warning not suppressed with @. Both matter. While a test runs, PHPUnit lowers error_reporting() to the
+     * unhandleable levels only (E_WARNING is not among them), so without raising it back the handler would read
+     * every warning as @-suppressed and let the losing worker's warning pass silently.
      */
     private function underLaravelsErrorHandling(callable $build): void
     {
+        $reporting = error_reporting(-1);
         set_error_handler(static function (int $level, string $message, string $file = '', int $line = 0): bool {
             if (! (error_reporting() & $level)) {
                 return false; // Suppressed with @, which Laravel's HandleExceptions honours.
@@ -46,6 +48,7 @@ class SchemaRegistryDirectoryRaceTest extends TestCase
             $build();
         } finally {
             restore_error_handler();
+            error_reporting($reporting);
         }
     }
 

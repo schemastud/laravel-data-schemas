@@ -549,6 +549,16 @@ class JsonSchemaGenerator implements Generator
                 continue;
             }
 
+            // `self` and `parent` name a class relative to the class that DECLARES the property (an inherited property
+            // keeps its declarer's meaning). Reflection reports them verbatim and not builtin, so without this they fall
+            // to the unknown-class degrade below and a `?self` tree node projects as `string|null`. A self-reference
+            // cycle is safe: ensureDef registers the def before walking its properties.
+            if ($name === 'self') {
+                $name = $property->getDeclaringClass()->getName();
+            } elseif ($name === 'parent') {
+                $name = $property->getDeclaringClass()->getParentClass() ? $property->getDeclaringClass()->getParentClass()->getName() : $name;
+            }
+
             if ($member->isBuiltin()) {
                 if ($name === 'array') {
                     $hasArray = true;

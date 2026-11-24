@@ -73,10 +73,41 @@ class FilesystemSchemaRegistry implements EnumeratesVersions, SchemaRegistry
             throw new SchemaRegistryConflict($id, $stored, $incoming);
         }
 
-        file_put_contents(
+        $this->writeAtomically(
             $this->pathFor($id),
-            json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            (string) json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         );
+    }
+
+    /**
+     * Every request and worker builds and reads this registry, so an artifact is read while it may be written.
+     * `file_put_contents` on the artifact's own path creates (or truncates) it BEFORE its bytes land: a reader in
+     * that window gets an empty or half-written file, `get()` answers null for a schema being registered, and a
+     * second writer with another shape slips past the frozen-schema guard above. So the bytes go to a temporary
+     * file in the SAME directory (a rename is atomic only within one filesystem) and the temporary file is renamed
+     * over the path: a reader sees no artifact or the whole one. The temporary name starts with a dot and does not
+     * end in `.schema.json`, so {@see ids()} and any `*.schema.json` glob never list it. A write that does not
+     * complete leaves nothing behind and throws, where it used to leave an empty artifact.
+     *
+     * The rename puts the TEMPORARY file in place, mode and all, so an artifact being replaced (its file is there
+     * but does not decode, so `get()` was null) would take the umask's mode over whatever a host had set. The
+     * temporary file is given the artifact's mode first. A new artifact keeps what `file_put_contents` gives the
+     * temporary file, `0666 & ~umask()`: exactly what the in-place write gave it.
+     */
+    protected function writeAtomically(string $path, string $contents): void
+    {
+        $temporary = dirname($path).'/.'.basename($path).'.'.bin2hex(random_bytes(6)).'.tmp';
+        clearstatcache(true, $path);
+        $mode = @fileperms($path);
+
+        if (@file_put_contents($temporary, $contents) !== strlen($contents)
+            || ($mode !== false && ! @chmod($temporary, $mode & 07777))
+            || ! @rename($temporary, $path)) {
+            $reason = error_get_last()['message'] ?? 'unknown error';
+            @unlink($temporary);
+
+            throw new RuntimeException("Cannot write the schema artifact [{$path}]: {$reason}");
+        }
     }
 
     public function get(string $id): ?array

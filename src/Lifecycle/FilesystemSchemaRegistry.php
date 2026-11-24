@@ -19,6 +19,7 @@ use Schemastud\DataSchemas\Contracts\SchemaRegistry;
  * Immutability / write-once: registering an `$id` that already exists with a
  * DIFFERENT structural fingerprint throws {@see SchemaRegistryConflict}. The
  * same `$id` with the same fingerprint is an idempotent no-op (re-publish).
+ * Across processes too: the check and the write run under {@see withLock()}.
  *
  * Resolves any `$id` at any depth — a top-level document or a nested addressable
  * node — because every addressable resource is stored under its own `$id`.
@@ -33,6 +34,12 @@ class FilesystemSchemaRegistry implements EnumeratesVersions, SchemaRegistry
 
     /** The marker that makes a truncated name legible AS truncated, rather than as a shorter id. */
     public const ELISION = '--';
+
+    /** The lock file beside the artifacts. Dot-named and not `*.schema.json`, so no listing or glob sees it. */
+    public const LOCK_FILE = '.registry.lock';
+
+    /** How deep this instance is inside its own {@see withLock()}: a nested call does not lock again. */
+    private int $lockDepth = 0;
 
     public function __construct(
         protected string $directory,
@@ -63,20 +70,87 @@ class FilesystemSchemaRegistry implements EnumeratesVersions, SchemaRegistry
 
         $incoming = SchemaFingerprint::of($schema);
 
-        $existing = $this->get($id);
-        if ($existing !== null) {
-            $stored = SchemaFingerprint::of($existing);
-            if ($stored === $incoming) {
-                return; // Idempotent re-publish of the identical shape.
-            }
-
-            throw new SchemaRegistryConflict($id, $stored, $incoming);
+        // A look without the lock first: an artifact is only ever renamed into place whole, so what get() reads is
+        // a whole artifact, and the common boot (an idempotent re-publish) neither locks nor creates the lock file.
+        if ($this->alreadyRegistered($id, $incoming)) {
+            return;
         }
 
-        $this->writeAtomically(
-            $this->pathFor($id),
-            (string) json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-        );
+        // Two writers of different shapes could both find nothing above and both write: the last rename won and
+        // both registrations "succeeded". Under the lock, the second writer waits, looks again, and is refused.
+        $this->withLock(function () use ($id, $incoming, $schema): void {
+            if ($this->alreadyRegistered($id, $incoming)) {
+                return;
+            }
+
+            $this->writeAtomically(
+                $this->pathFor($id),
+                (string) json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            );
+        });
+    }
+
+    /**
+     * Run `$critical` holding this registry's exclusive lock: `flock(LOCK_EX)` on {@see LOCK_FILE} in its directory.
+     * {@see register()} holds it around its check and its write; a caller that decides what to register from what
+     * the directory holds (e.g. sweeping a stale artifact first) holds it around both, so that decision and the
+     * write are one step for every other process. Blocks while another process holds it.
+     *
+     * Re-entrant for THIS instance only: `register()` inside `withLock()` on the same instance does not lock again.
+     * Another instance on the same directory in the same process waits like another process (an `flock` is held by
+     * an open file, not by a process), so a callable must use the registry it is given.
+     *
+     * The lock file stays: unlinking it would race the next holder, who may already have it open. `flock` is
+     * advisory and local; it does not reach across hosts sharing the directory over a network filesystem.
+     *
+     * @template T
+     *
+     * @param  callable(self): T  $critical
+     * @return T
+     */
+    public function withLock(callable $critical): mixed
+    {
+        if ($this->lockDepth > 0) {
+            return $critical($this);
+        }
+
+        $path = $this->directory.'/'.self::LOCK_FILE;
+        $handle = @fopen($path, 'c');
+        if ($handle === false) {
+            throw new RuntimeException("Cannot open the schema registry lock [{$path}]: ".(error_get_last()['message'] ?? 'unknown error'));
+        }
+
+        try {
+            if (! flock($handle, LOCK_EX)) {
+                throw new RuntimeException("Cannot lock the schema registry [{$path}].");
+            }
+
+            $this->lockDepth++;
+            try {
+                return $critical($this);
+            } finally {
+                $this->lockDepth--;
+                flock($handle, LOCK_UN);
+            }
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    /** True for an identical artifact already in place; a different one is a {@see SchemaRegistryConflict}. */
+    private function alreadyRegistered(string $id, string $incoming): bool
+    {
+        $existing = $this->get($id);
+        if ($existing === null) {
+            return false;
+        }
+
+        $stored = SchemaFingerprint::of($existing);
+        if ($stored === $incoming) {
+            return true; // Idempotent re-publish of the identical shape.
+        }
+
+        throw new SchemaRegistryConflict($id, $stored, $incoming);
     }
 
     /**

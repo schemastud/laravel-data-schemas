@@ -5,6 +5,7 @@ namespace Schemastud\DataSchemas\Tests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
+use Schemastud\DataSchemas\Lifecycle\SchemaRegistryConflict;
 
 /**
  * Fix B (calcucrypt, root ruling 0bc3e9ce): `register()` wrote the artifact in place with `file_put_contents`,
@@ -22,6 +23,12 @@ use Schemastud\DataSchemas\Lifecycle\FilesystemSchemaRegistry;
  * Replacing an artifact (one whose file is there but does not decode, so `get()` is null and `register()` writes)
  * keeps the artifact's mode: the temporary file would otherwise carry the umask's mode over a file a host had
  * set itself. A new artifact gets what the in-place write gave it, `0666 & ~umask()`.
+ *
+ * Two writers of DIFFERENT shapes used to both pass the `get()` check before either renamed, so both registrations
+ * succeeded and the last rename won. The check and the write now run under an exclusive lock on the registry's
+ * `.registry.lock`, so the second writer waits and is then refused. The lock window is checked twice: by the
+ * simulated view (the wrapper models a held lock: a second holder would wait, which it records), and by two real
+ * processes on a real directory (pcntl_fork; skipped where pcntl or posix is absent).
  */
 class SchemaRegistryAtomicWriteTest extends TestCase
 {
@@ -89,7 +96,11 @@ class SchemaRegistryAtomicWriteTest extends TestCase
 
         $this->assertNotNull($refused, 'a write that did not complete must not pass silently');
         $this->assertStringContainsString('Cannot write the schema artifact', $refused->getMessage());
-        $this->assertSame([], ObservedRegistryDirectory::$files, 'neither an empty artifact nor a temporary file is left');
+        $this->assertSame(
+            [self::DIR.'/.registry.lock'],
+            array_keys(ObservedRegistryDirectory::$files),
+            'neither an empty artifact nor a temporary file is left; only the (empty) lock file',
+        );
         $this->assertNull((new FilesystemSchemaRegistry(self::DIR))->get($this->schema['$id']));
     }
 
@@ -134,6 +145,121 @@ class SchemaRegistryAtomicWriteTest extends TestCase
         }
     }
 
+    /** @var array<string, mixed> a second shape under the same `$id` */
+    private array $otherShape = [
+        '$id' => 'https://example.test/schemas/thing/1',
+        'type' => 'object',
+        'properties' => ['name' => ['type' => 'string'], 'colour' => ['type' => 'string']],
+    ];
+
+    public function test_a_second_writer_inside_the_lock_window_waits_and_is_then_refused(): void
+    {
+        $first = new FilesystemSchemaRegistry(self::DIR);
+        $second = new FilesystemSchemaRegistry(self::DIR);
+        $insideTheWindow = null;
+
+        // While the first writer is writing its temporary file (past its get(), before its rename), the second
+        // writer registers another shape under the same $id.
+        ObservedRegistryDirectory::$onFirstWrite = function () use ($second, &$insideTheWindow): void {
+            try {
+                $second->register($this->otherShape);
+                $insideTheWindow = 'completed';
+            } catch (WouldWaitForTheLock) {
+                $insideTheWindow = 'waited';
+            }
+        };
+
+        $first->register($this->schema);
+
+        $this->assertSame(
+            'waited',
+            $insideTheWindow,
+            "the second writer's registration {$insideTheWindow} inside the first's write window: both registrations succeed and the last rename wins",
+        );
+        $this->assertSame([], array_filter(
+            ObservedRegistryDirectory::$renames,
+            fn (array $rename) => $rename[0] !== ObservedRegistryDirectory::$renames[0][0],
+        ), 'only the first writer renamed an artifact into place');
+
+        // Once the lock is free the second writer goes on: it now sees the first's artifact and is refused.
+        $refused = null;
+        try {
+            $second->register($this->otherShape);
+        } catch (SchemaRegistryConflict $e) {
+            $refused = $e;
+        }
+        $this->assertNotNull($refused, 'the second writer of another shape is refused once it can look');
+        $this->assertSame($this->schema, $first->get($this->schema['$id']));
+    }
+
+    public function test_a_second_process_waits_for_the_lock_and_is_then_refused(): void
+    {
+        if (! function_exists('pcntl_fork') || ! function_exists('posix_kill')) {
+            $this->markTestSkipped('pcntl and posix are needed to run a second process.');
+        }
+
+        $dir = self::realDirectory();
+        $signals = $dir.'-signals';
+        mkdir($signals);
+        $registry = new FilesystemSchemaRegistry($dir);
+        $await = static function (string $file): void {
+            $deadline = microtime(true) + 10;
+            while (! is_file($file)) {
+                if (microtime(true) > $deadline) {
+                    throw new RuntimeException("timed out waiting for [{$file}]");
+                }
+                usleep(5000);
+            }
+        };
+
+        $child = pcntl_fork();
+        if ($child === -1) {
+            $this->fail('pcntl_fork failed');
+        }
+
+        if ($child === 0) {
+            // The second process: once the first holds the lock, it registers another shape.
+            try {
+                $await($signals.'/first-holds');
+                file_put_contents($signals.'/second-registering', '');
+                (new FilesystemSchemaRegistry($dir))->register($this->otherShape);
+                $outcome = 'registered';
+            } catch (SchemaRegistryConflict) {
+                $outcome = 'refused';
+            } catch (\Throwable $e) {
+                $outcome = 'error: '.$e->getMessage();
+            }
+            file_put_contents($signals.'/second-result', sprintf('%.6f', microtime(true))."\n".$outcome);
+            posix_kill(posix_getpid(), SIGKILL); // leave without running the parent's PHPUnit shutdown
+        }
+
+        try {
+            $wrote = null;
+            $registry->withLock(function (FilesystemSchemaRegistry $locked) use ($signals, $await, &$wrote): void {
+                touch($signals.'/first-holds');
+                $await($signals.'/second-registering');
+                usleep(500_000); // the second process is now inside register(), at the lock
+                $locked->register($this->schema);
+                $wrote = microtime(true);
+            });
+
+            pcntl_waitpid($child, $status);
+            $child = 0;
+            [$finished, $outcome] = explode("\n", (string) file_get_contents($signals.'/second-result'), 2);
+
+            $this->assertSame('refused', $outcome, 'the second process is refused, not clobbered or clobbering');
+            $this->assertGreaterThan($wrote, (float) $finished, 'the second process finished only after the first had written');
+            $this->assertSame($this->schema, $registry->get($this->schema['$id']));
+        } finally {
+            if ($child > 0) {
+                posix_kill($child, SIGKILL);
+                pcntl_waitpid($child, $status);
+            }
+            self::removeRealDirectory($signals);
+            self::removeRealDirectory($dir);
+        }
+    }
+
     private static function realDirectory(): string
     {
         return sys_get_temp_dir().'/lds-atomic-'.bin2hex(random_bytes(6));
@@ -158,9 +284,10 @@ class SchemaRegistryAtomicWriteTest extends TestCase
             $registry->register($this->schema);
             $registry->register($this->schema); // the idempotent re-publish writes nothing
 
-            $entries = array_values(array_diff(scandir($dir) ?: [], ['.', '..']));
+            $entries = array_values(array_diff(scandir($dir) ?: [], ['.', '..', '.registry.lock']));
             $this->assertCount(1, $entries, 'no temporary file left: '.implode(', ', $entries));
             $this->assertStringEndsWith('.schema.json', $entries[0]);
+            $this->assertFileExists($dir.'/.registry.lock', 'the lock file stays: unlinking a lock file races its next holder');
             $this->assertSame($this->schema, $registry->get($this->schema['$id']));
         } finally {
             self::removeRealDirectory($dir);
@@ -185,6 +312,12 @@ class ObservedRegistryDirectory
 
     public static bool $diskFull = false;
 
+    /** Called once, at the first write: lets a test act inside a writer's window. */
+    public static ?\Closure $onFirstWrite = null;
+
+    /** The open stream holding the exclusive lock, if any. */
+    private static ?self $lockHolder = null;
+
     /** @var resource|null */
     public $context;
 
@@ -198,6 +331,26 @@ class ObservedRegistryDirectory
         self::$seenDuringWrites = [];
         self::$renames = [];
         self::$diskFull = false;
+        self::$onFirstWrite = null;
+        self::$lockHolder = null;
+    }
+
+    /** A held lock makes a second holder wait. One thread cannot wait, so the attempt is recorded by throwing. */
+    public function stream_lock(int $operation): bool
+    {
+        if (($operation & ~LOCK_NB) === LOCK_UN) {
+            if (self::$lockHolder === $this) {
+                self::$lockHolder = null;
+            }
+
+            return true;
+        }
+        if (self::$lockHolder !== null && self::$lockHolder !== $this) {
+            throw new WouldWaitForTheLock;
+        }
+        self::$lockHolder = $this;
+
+        return true;
     }
 
     public function url_stat(string $path, int $flags): array|false
@@ -239,6 +392,12 @@ class ObservedRegistryDirectory
     {
         self::$seenDuringWrites[] = self::$files;
 
+        if (self::$onFirstWrite !== null) {
+            $act = self::$onFirstWrite;
+            self::$onFirstWrite = null;
+            $act();
+        }
+
         if (self::$diskFull) {
             return 0;
         }
@@ -270,7 +429,12 @@ class ObservedRegistryDirectory
         return true;
     }
 
-    public function stream_close(): void {}
+    public function stream_close(): void
+    {
+        if (self::$lockHolder === $this) {
+            self::$lockHolder = null; // closing a file releases its lock
+        }
+    }
 
     public function stream_set_option(int $option, int $arg1, ?int $arg2): bool
     {
@@ -296,3 +460,6 @@ class ObservedRegistryDirectory
         return true;
     }
 }
+
+/** A second process would wait at the lock here; the simulated view records that it reached it. */
+class WouldWaitForTheLock extends \Exception {}
